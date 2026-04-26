@@ -11,7 +11,7 @@ cp .env.example .env
 npm run dev
 ```
 
-ブラウザで `http://localhost:3305` を開きます。
+ブラウザで `http://127.0.0.1:3305` を開きます。
 
 CLIでMock実行する場合:
 
@@ -57,6 +57,27 @@ APIキーやWebhook URLは `.env` に入れ、コミットしないでくださ�
 - `GET /api/config`: 現在の安全な設定を返す
 - `POST /api/run`: 情報収集から提案インテリジェンス生成まで実行
 
+## Step 2 UI/UX
+
+Mockで動く初期版を、毎日確認する「AI Opportunity Brief」として見やすくしました。
+
+### Views
+
+- `Today`: 今日の結論、重要アップデートTOP3、できるようになったこと、提案ネタ、設計書、次アクション
+- `Timeline`: AIアップデートを日付順に確認
+- `Ideas`: 提案ネタ、PoC案、営業トーク、提案先企業を確認
+- `Design Docs`: Sランク中心のPoC設計書候補を確認
+- `Sources`: Mock収集元と元情報を確認
+
+### UX Notes
+
+- Notion-likeな白基調、広めの余白、ブロック型整理
+- LINE/Slackのように一目で共有しやすい短い見出し
+- Linear風のシンプルな5メニュー構成
+- `APP_MODE`、`AI_PROVIDER`、`PAID_AI_ENABLED`、今日の推定コストを常時表示
+- Loading / Empty / Error / 無料枠超過メッセージを画面側で表示
+- スマホではナビゲーションを横スクロール、カードを縦積み表示
+
 ## Current Scope
 
-現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLIの土台を実装しています。次の拡張候補はRSS、GitHub Trending、arXiv、Notion/Slack保存です。
+現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step2のMock画面品質改善までを実装しています。次の拡張候補はRSS、GitHub Trending、arXiv、Notion/Slack保存です。

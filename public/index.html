@@ -7,68 +7,66 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="app-header">
-      <div>
-        <p class="eyebrow">AI Business Development Knowledge Base</p>
-        <h1>AI Proposal Intelligence OS</h1>
-      </div>
-      <button id="runButton" class="primary-button" type="button">Run Intelligence</button>
-    </header>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="main navigation">
+        <div class="brand">
+          <span class="brand-mark">AI</span>
+          <div>
+            <p class="eyebrow">Opportunity Brief</p>
+            <h1>AI Proposal OS</h1>
+          </div>
+        </div>
 
-    <main class="layout">
-      <section class="panel mode-panel" aria-label="runtime configuration">
-        <div>
-          <span class="label">Mode</span>
-          <strong id="mode">loading</strong>
-        </div>
-        <div>
-          <span class="label">AI Provider</span>
-          <strong id="provider">loading</strong>
-        </div>
-        <div>
-          <span class="label">Paid AI</span>
-          <strong id="paidAi">loading</strong>
-        </div>
-        <div>
-          <span class="label">Limit</span>
-          <strong id="limit">loading</strong>
-        </div>
-      </section>
+        <nav class="nav" aria-label="views">
+          <button class="nav-item active" type="button" data-view="today">Today</button>
+          <button class="nav-item" type="button" data-view="timeline">Timeline</button>
+          <button class="nav-item" type="button" data-view="ideas">Ideas</button>
+          <button class="nav-item" type="button" data-view="docs">Design Docs</button>
+          <button class="nav-item" type="button" data-view="sources">Sources</button>
+        </nav>
 
-      <section class="summary-grid" aria-label="run summary">
-        <article>
-          <span class="metric" id="collected">0</span>
-          <span class="label">Collected</span>
-        </article>
-        <article>
-          <span class="metric" id="analyzed">0</span>
-          <span class="label">Analyzed</span>
-        </article>
-        <article>
-          <span class="metric" id="docs">0</span>
-          <span class="label">Design Seeds</span>
-        </article>
-        <article>
-          <span class="metric" id="fallback">0</span>
-          <span class="label">Fallback</span>
-        </article>
-      </section>
+        <section class="mode-card" aria-label="runtime status">
+          <div class="mode-row">
+            <span>APP_MODE</span>
+            <strong id="mode">loading</strong>
+          </div>
+          <div class="mode-row">
+            <span>AI_PROVIDER</span>
+            <strong id="provider">loading</strong>
+          </div>
+          <div class="mode-row">
+            <span>PAID_AI_ENABLED</span>
+            <strong id="paidAi">loading</strong>
+          </div>
+          <div class="mode-row">
+            <span>Cost Today</span>
+            <strong id="cost">loading</strong>
+          </div>
+        </section>
+      </aside>
 
-      <section>
-        <div class="section-title">
-          <h2>Proposal Intelligence</h2>
-          <span id="timestamp"></span>
-        </div>
-        <div id="items" class="items"></div>
-      </section>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Today</p>
+            <h2 id="viewTitle">今日のAI Opportunity Brief</h2>
+          </div>
+          <div class="topbar-actions">
+            <span id="timestamp" class="timestamp">Not run yet</span>
+            <button id="runButton" class="primary-button" type="button">更新</button>
+          </div>
+        </header>
 
-      <section>
-        <div class="section-title">
-          <h2>Design Doc Seeds</h2>
-        </div>
-        <div id="designDocs" class="doc-list"></div>
-      </section>
-    </main>
+        <section id="notice" class="notice hidden" aria-live="polite"></section>
+        <section id="content" class="content" aria-live="polite">
+          <div class="state-card">
+            <span class="loader"></span>
+            <strong>Mock briefを準備しています</strong>
+            <p>AIニュースを、提案・PoC・設計書の種として再整理します。</p>
+          </div>
+        </section>
+      </main>
+    </div>
 
     <script src="/app.js" type="module"></script>
   </body>
