@@ -1,0 +1,15 @@
+{
+  "name": "ai-proposal-intelligence-os",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "start": "node src/server.mjs",
+    "run:mock": "APP_MODE=mock AI_PROVIDER=mock PAID_AI_ENABLED=false node src/cli.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
