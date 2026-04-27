@@ -776,6 +776,268 @@ h4 {
   }
 }
 
+/* Step 3.6: decision-first compact UI */
+.main {
+  max-width: 980px;
+}
+
+.topbar,
+.run-meta {
+  display: none;
+}
+
+.compact-brief-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0 4px;
+}
+
+.compact-brief-header > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.compact-brief-header strong {
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.compact-brief-header span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.compact-run {
+  min-width: 72px;
+  min-height: 38px;
+}
+
+.decision-card {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.decision-card p {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.65;
+}
+
+.one-action {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.one-action strong {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tight {
+  margin-bottom: 8px;
+}
+
+.compact-section {
+  padding: 18px;
+}
+
+.compact-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.capability-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.capability-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.capability-main h4 {
+  font-size: 18px;
+}
+
+.capability-main p,
+.brief-idea-card p,
+.mini-doc-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 6px 0 0;
+  color: var(--muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+details {
+  margin-top: 10px;
+}
+
+summary {
+  width: fit-content;
+  color: var(--blue);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.details-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.details-body p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.details-body strong {
+  color: var(--ink);
+}
+
+.todo-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.todo-list li {
+  position: relative;
+  padding: 12px 14px 12px 42px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.todo-list li::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 15px;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: #fff;
+}
+
+.mini-source-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mini-source-status span {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 13px;
+}
+
+.source-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.source-status {
+  align-content: start;
+}
+
+.source-status p {
+  display: none;
+}
+
+.source-status p:nth-of-type(1),
+.source-status p:nth-of-type(2),
+.source-status p:nth-of-type(3) {
+  display: grid;
+}
+
+.source-error {
+  display: block !important;
+}
+
+.source-list {
+  margin-top: 8px;
+}
+
+.timeline-day-card p {
+  display: none;
+}
+
+.idea-card,
+.doc-card,
+.brief-idea-card,
+.mini-doc-card {
+  align-content: start;
+}
+
+.idea-fields p,
+.doc-fields p {
+  display: grid;
+  margin: 0;
+  -webkit-line-clamp: initial;
+}
+
+.brief-idea-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.mini-doc-list {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+@media (max-width: 760px) {
+  .compact-brief-header,
+  .compact-brief-header > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .compact-brief-header .primary-button {
+    width: 100%;
+  }
+
+  .decision-card p {
+    font-size: 17px;
+  }
+
+  .capability-main {
+    grid-template-columns: 1fr;
+  }
+
+  .source-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* Step 3.5: premium minimal brief UI */
 :root {
   --ink: #1c1917;

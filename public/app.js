@@ -57,6 +57,23 @@ function proposalTitle(item) {
   return item.proposalTitle || item.pocIdeas?.[0] || item.businessUseCases?.[0] || "AI活用PoC";
 }
 
+function capabilityTitle(item) {
+  return item.capabilityTitle || item.whatBecamePossible?.[0] || itemTitle(item);
+}
+
+function shortDescription(item) {
+  return item.shortDescription || whatHappened(item) || item.summary || "";
+}
+
+function expectedEffect(item) {
+  return item.expectedEffect || item.businessDevelopmentAngles?.[0] || "業務時間を削減し、提案に転用できます。";
+}
+
+function shortTalk(item) {
+  const text = item.salesTalk || proposalTitle(item);
+  return text.length > 58 ? `${text.slice(0, 58)}...` : text;
+}
+
 function topItems(limit = 3) {
   return (state.result?.items || []).slice(0, limit);
 }
@@ -129,7 +146,7 @@ function buildDailyBriefText() {
     `今日は${themes.join("・") || "AI活用"}の更新が重要です。${top[0]?.salesTalk || ""}`,
     "",
     `## 重要アップデート TOP3`,
-    ...top.map((item, index) => `${index + 1}. ${itemTitle(item)}\n   - できること: ${item.whatBecamePossible?.[0] || ""}\n   - 提案ネタ: ${proposalTitle(item)}`)
+    ...top.map((item, index) => `${index + 1}. ${capabilityTitle(item)}\n   - 使える業務: ${item.businessUseCases?.slice(0, 3).join(" / ") || ""}\n   - 次アクション: ${item.nextAction || ""}`)
   ].join("\n");
 }
 
@@ -207,47 +224,55 @@ function renderEmpty() {
 function renderToday() {
   const items = state.result.items;
   const top = topItems(3);
-  const primary = top[0];
   const docs = state.result.designDocCandidates;
-  const possible = [...new Set(top.flatMap((item) => item.whatBecamePossible).slice(0, 5))];
   const ideas = items.slice(0, 3);
   const focusAreas = [...new Set(top.map((item) => item.focusArea || item.signals?.[0]).filter(Boolean))].slice(0, 3);
+  const sourceReports = state.result.collection?.sourceReports || [];
+  const sourceErrors = sourceReports.filter((source) => source.status === "error").length;
+  const mockFallbacks = sourceReports.filter((source) => source.status === "mock" || source.status === "fallback").length;
+  const actions = [
+    top[0]?.nextAction || "よく使うPDFを10件選ぶ",
+    top[1]?.nextAction || "社内FAQ検索のPoC対象を決める",
+    top[2]?.nextAction || "提案書自動作成のサンプルを1つ作る"
+  ];
 
   return `
-    <section class="today-date-row">
-      <span>${escapeHtml(shortDate(state.result.finishedAt))}</span>
-      <button class="text-button" type="button" data-copy-daily="true">Daily Briefをコピー</button>
-    </section>
-
-    <section class="morning-brief">
-      <div class="brief-headline">
-        <span class="pill">今日の結論</span>
-        <h3>今日は${escapeHtml(focusAreas.join("・") || "AI活用")}を提案化する日です。</h3>
-        <p>${escapeHtml(primary?.salesTalk || "重要なAIアップデートを、業務提案・PoC・設計書へ変換しました。")}</p>
+    <section class="compact-brief-header">
+      <div>
+        <strong>AI Proposal OS</strong>
+        <span>${escapeHtml(shortDate(state.result.finishedAt))}</span>
       </div>
-      <div class="brief-inline">
-        <span><strong>注目テーマ</strong>${escapeHtml(focusAreas.join(" / ") || "AI提案")}</span>
-        <span><strong>事業活用</strong>${escapeHtml(primary?.businessDevelopmentAngles?.[0] || "小さなPoCから横展開する")}</span>
-        <span><strong>今日やること</strong>${escapeHtml(primary?.nextAction || "Sランクの設計書候補を1件確認する")}</span>
+      <div>
+        <span>${escapeHtml(state.config?.appMode || "mock")} / ${escapeHtml(estimateCost(state.config, state.result))}</span>
+        <button id="runButtonInline" class="primary-button compact-run" type="button" data-action="retry">Run</button>
       </div>
     </section>
 
-    <section class="brief-section">
+    <section class="decision-card">
+      <div class="section-kicker tight">
+        <h3>今日の結論</h3>
+        <button class="text-button" type="button" data-copy-daily="true">コピー</button>
+      </div>
+      <p>今日は${escapeHtml(focusAreas.join("と") || "AI活用")}が重要です。社内検索、提案書作成、業務自動化に転用できます。</p>
+      <div class="chip-row">${chips(focusAreas.slice(0, 3))}</div>
+      <div class="one-action"><strong>今日やること</strong>${escapeHtml(actions[0])}</div>
+    </section>
+
+    <section class="brief-section compact-section">
       <div class="section-kicker">
-        <h3>重要アップデート TOP3</h3>
-        <span>Signal over noise</span>
+        <h3>今日できること TOP3</h3>
       </div>
-      <div class="stack">${top.map(renderOpportunityCard).join("")}</div>
+      <div class="compact-card-list">${top.map(renderCapabilityCard).join("")}</div>
     </section>
 
-    <section class="brief-section">
+    <section class="brief-section compact-section">
       <div class="section-kicker">
-        <h3>今日できるようになったこと</h3>
+        <h3>次にやること</h3>
       </div>
-      <ul class="capability-list">${possible.map((text) => `<li>${escapeHtml(text)}</li>`).join("")}</ul>
+      <ul class="todo-list">${actions.slice(0, 3).map((action) => `<li>${escapeHtml(action)}</li>`).join("")}</ul>
     </section>
 
-    <section class="brief-section">
+    <section class="brief-section compact-section">
       <div class="section-kicker">
         <h3>今日の提案ネタ</h3>
         <button class="text-button" type="button" data-view-link="ideas">Ideasへ</button>
@@ -255,24 +280,53 @@ function renderToday() {
       <div class="brief-idea-grid">${ideas.map(renderBriefIdeaCard).join("")}</div>
     </section>
 
-    <section class="brief-section">
+    <section class="brief-section compact-section">
       <div class="section-kicker">
-        <h3>今日見るべき設計書</h3>
+        <h3>設計書 2件</h3>
         <button class="text-button" type="button" data-view-link="docs">Design Docsへ</button>
       </div>
-      <div class="mini-doc-list">${docs.slice(0, 3).map(renderMiniDocCard).join("")}</div>
+      <div class="mini-doc-list">${docs.slice(0, 2).map(renderMiniDocCard).join("")}</div>
     </section>
 
-    <section class="brief-section">
+    <section class="brief-section compact-section">
       <div class="section-kicker">
-        <h3>次アクション</h3>
+        <h3>Sources</h3>
+        <button class="text-button" type="button" data-view-link="sources">開く</button>
       </div>
-      <ol class="next-action-list">
-        <li>Design Docを1件コピーし、PoC前提を確認する</li>
-        <li>提案トークを1つ選び、対象会社を3社に絞る</li>
-        <li>Daily Briefをチーム共有用に貼り付ける</li>
-      </ol>
+      <div class="mini-source-status">
+        <span>正常 ${state.result.counts.sourcesOk}</span>
+        <span>エラー ${sourceErrors}</span>
+        <span>Mock ${mockFallbacks}</span>
+        <span>${escapeHtml(estimateCost(state.config, state.result))}</span>
+      </div>
     </section>
+  `;
+}
+
+function renderCapabilityCard(item) {
+  return `
+    <article class="capability-card">
+      <div class="capability-main">
+        <span class="rank-badge">${escapeHtml(item.rank)}</span>
+        <div>
+          <h4>${escapeHtml(capabilityTitle(item))}</h4>
+          <p>${escapeHtml(shortDescription(item))}</p>
+        </div>
+      </div>
+      <div class="chip-row">${chips(item.businessUseCases.slice(0, 3))}</div>
+      <details>
+        <summary>詳しく見る</summary>
+        <div class="details-body">
+          <p><strong>元ネタ</strong>${escapeHtml(itemTitle(item))}</p>
+          <p><strong>提案ネタ</strong>${escapeHtml(proposalTitle(item))}</p>
+          <p><strong>次アクション</strong>${escapeHtml(item.nextAction || "")}</p>
+          <div class="card-actions">
+            <button class="text-button" type="button" data-copy="${escapeHtml(item.salesTalk)}">営業トークをコピー</button>
+            <button class="text-button" type="button" data-copy="${escapeHtml(item.socialPost)}">SNS投稿案をコピー</button>
+          </div>
+        </div>
+      </details>
+    </article>
   `;
 }
 
@@ -295,7 +349,7 @@ function renderOpportunityCard(item) {
       <p class="one-line"><strong>提案ネタ:</strong> ${escapeHtml(proposalTitle(item))}</p>
       <p class="one-line"><strong>次アクション:</strong> ${escapeHtml(item.nextAction || item.pocIdeas[0])}</p>
       <div class="card-actions">
-        <button class="text-button" type="button" data-copy="${escapeHtml(item.salesTalk)}">提案トークをコピー</button>
+        <button class="text-button" type="button" data-copy="${escapeHtml(item.salesTalk)}">営業トークをコピー</button>
         <button class="text-button" type="button" data-copy="${escapeHtml(item.socialPost)}">SNS投稿案をコピー</button>
       </div>
     </article>
@@ -306,10 +360,14 @@ function renderBriefIdeaCard(item) {
   return `
     <article class="brief-idea-card">
       <h4>${escapeHtml(proposalTitle(item))}</h4>
-      <p><strong>対象会社:</strong> ${escapeHtml(item.targetCompanies[0])}</p>
-      <p><strong>解決課題:</strong> ${escapeHtml(item.problemToSolve || item.businessUseCases[0])}</p>
-      <p>${escapeHtml(item.salesTalk)}</p>
-      <button class="text-button inline-copy" type="button" data-copy="${escapeHtml(item.salesTalk)}">提案トークをコピー</button>
+      <p><strong>対象</strong>${escapeHtml(item.targetCompanies[0])}</p>
+      <p><strong>解決課題</strong>${escapeHtml(item.problemToSolve || item.businessUseCases[0])}</p>
+      <p><strong>期待効果</strong>${escapeHtml(expectedEffect(item))}</p>
+      <details>
+        <summary>詳しく見る</summary>
+        <p>${escapeHtml(shortTalk(item))}</p>
+      </details>
+      <button class="text-button inline-copy" type="button" data-copy="${escapeHtml(item.salesTalk)}">営業トークをコピー</button>
     </article>
   `;
 }
@@ -321,8 +379,9 @@ function renderMiniDocCard(doc) {
   return `
     <article class="mini-doc-card">
       <h4>${escapeHtml(title)}</h4>
-      <p><strong>PoC難易度:</strong> ${escapeHtml(item?.pocDifficulty || "中")}</p>
-      <p><strong>必要ツール:</strong> ${escapeHtml(tools.slice(0, 3).join(" / "))}</p>
+      <p><strong>目的</strong>${escapeHtml(item?.pocIdeas?.[0] || "小さなPoCで実用性を確認する")}</p>
+      <p><strong>必要ツール</strong>${escapeHtml(tools.slice(0, 3).join(" / "))}</p>
+      <p><strong>難易度</strong>${escapeHtml(item?.pocDifficulty || "中")}</p>
       <div class="mini-actions">
         <button class="secondary-button small-button" type="button" data-view-link="docs">開く</button>
         <button class="secondary-button small-button" type="button" data-copy="${escapeHtml(buildDesignDocText(doc))}">コピー</button>
@@ -345,7 +404,6 @@ function renderTimeline() {
           <div>
             <time>${escapeHtml(shortDate(state.result.finishedAt))}</time>
             <h4>${escapeHtml(conclusion)}</h4>
-            <p>今日の重要アップデートを、提案ネタと設計書候補へ整理しました。</p>
           </div>
           <div class="timeline-metrics">
             <span><strong>${state.result.items.length}</strong>重要アップデート件数</span>
@@ -375,15 +433,19 @@ function renderIdeas() {
                 <span class="rank-badge small">${escapeHtml(item.rank)}</span>
                 <h4>${escapeHtml(proposalTitle(item))}</h4>
                 <div class="idea-fields">
-                  <p><strong>対象業界</strong>${escapeHtml(industryFor(item))}</p>
-                  <p><strong>対象部署</strong>${escapeHtml(departmentFor(item))}</p>
+                  <p><strong>対象</strong>${escapeHtml(`${industryFor(item)} / ${departmentFor(item)}`)}</p>
                   <p><strong>解決課題</strong>${escapeHtml(item.problemToSolve || item.businessUseCases[0])}</p>
-                  <p><strong>PoC難易度</strong>${escapeHtml(item.pocDifficulty || "中")}</p>
-                  <p><strong>事業インパクト</strong>${escapeHtml(impactFor(item))}</p>
-                  <p><strong>関連設計書</strong>${escapeHtml(item.focusArea || itemTitle(item))} PoC設計書</p>
+                  <p><strong>期待効果</strong>${escapeHtml(expectedEffect(item))}</p>
                 </div>
-                <p class="talk-preview">${escapeHtml(item.salesTalk)}</p>
-                <button class="text-button inline-copy" type="button" data-copy="${escapeHtml(item.salesTalk)}">提案トークをコピー</button>
+                <details>
+                  <summary>詳しく見る</summary>
+                  <div class="details-body">
+                    <p><strong>PoC難易度</strong>${escapeHtml(item.pocDifficulty || "中")}</p>
+                    <p><strong>事業インパクト</strong>${escapeHtml(impactFor(item))}</p>
+                    <p><strong>関連設計書</strong>${escapeHtml(item.focusArea || itemTitle(item))} PoC設計書</p>
+                  </div>
+                </details>
+                <button class="text-button inline-copy" type="button" data-copy="${escapeHtml(item.salesTalk)}">営業トークをコピー</button>
               </article>
             `
           )
@@ -399,12 +461,18 @@ function renderDocCard(doc) {
     <article class="doc-card">
       <h4>${escapeHtml(docTitle(doc))}</h4>
       <div class="doc-fields">
-        <p><strong>元ネタ</strong>${escapeHtml(item ? itemTitle(item) : doc.title)}</p>
-        <p><strong>対象業務</strong>${escapeHtml(item?.businessUseCases?.[0] || "業務改善")}</p>
-        <p><strong>PoC範囲</strong>${escapeHtml(item?.pocIdeas?.[0] || "小規模PoC")}</p>
+        <p><strong>目的</strong>${escapeHtml(item?.pocIdeas?.[0] || "小規模PoCで実用性を確認する")}</p>
         <p><strong>必要ツール</strong>${escapeHtml((item?.requiredTools || ["業務データ"]).slice(0, 3).join(" / "))}</p>
-        <p><strong>次アクション</strong>${escapeHtml(item?.nextAction || "要件を整理する")}</p>
+        <p><strong>難易度</strong>${escapeHtml(item?.pocDifficulty || "中")}</p>
       </div>
+      <details>
+        <summary>開く</summary>
+        <div class="details-body">
+          <p><strong>元ネタ</strong>${escapeHtml(item ? itemTitle(item) : doc.title)}</p>
+          <p><strong>対象業務</strong>${escapeHtml(item?.businessUseCases?.[0] || "業務改善")}</p>
+          <p><strong>次アクション</strong>${escapeHtml(item?.nextAction || "要件を整理する")}</p>
+        </div>
+      </details>
       <button class="secondary-button small-button" type="button" data-copy="${escapeHtml(buildDesignDocText(doc))}">Markdownコピー</button>
     </article>
   `;
@@ -435,10 +503,9 @@ function renderSources() {
         <span>${reports.length} checked / ${usedFallback ? "Mock fallback" : "Live entry"}</span>
       </div>
       <div class="source-summary-grid">
-        <article><strong>${reports.length}</strong><span>有効ソース数</span></article>
-        <article><strong>${okCount}</strong><span>成功ソース数</span></article>
-        <article><strong>${errorCount}</strong><span>エラーソース数</span></article>
-        <article><strong>${mockCount}</strong><span>Mock fallback数</span></article>
+        <article><strong>${okCount}</strong><span>正常</span></article>
+        <article><strong>${errorCount}</strong><span>エラー</span></article>
+        <article><strong>${mockCount}</strong><span>Mock fallback</span></article>
         <article><strong>${escapeHtml(estimateCost(state.config, state.result))}</strong><span>推定コスト</span></article>
       </div>
       <div class="source-status-grid">

@@ -139,6 +139,19 @@ type OpportunitySignal = {
 - Daily Brief、Design Doc、提案トーク、SNS投稿案のコピー導線を追加
 - スマホでは上部ナビ、1カラムカード、大きめボタンで読みやすく調整
 
+## Step 3.6 Decision-First UI
+
+Step3.6では、読む画面ではなく「判断する画面」としてさらに情報量を減らしました。外部API連携、Collector、Cost Guard、APP_MODE/AI_PROVIDER/PAID_AI_ENABLEDの安全設計は変更していません。
+
+- Todayを「Compact Header → 今日の結論 → 今日できることTOP3 → 次にやること → 提案ネタ → 設計書 → Sources簡易ステータス」に再構成
+- TOP3はニュースタイトルではなく「できること」を主語に表示
+- カード本文は最大2行に抑え、詳細は `詳しく見る` に収納
+- Ideasは提案タイトル、対象、解決課題、期待効果だけを主表示
+- Design DocsはPoC候補として、目的、必要ツール、難易度だけを主表示
+- Sourcesは正常、エラー、Mock fallback、今日のコストを先に表示
+- Timelineは日付、結論1行、件数、開くボタンだけに圧縮
+- Mockデータに短い `capabilityTitle` / `shortDescription` / `expectedEffect` を追加
+
 ## Current Scope
 
-現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step3の外部収集入口、Step3.5のUI/UX改善までを実装しています。次の拡張候補は収集結果のローカル永続化、RSS対象の調整、Step4のAI分析強化、Notion/Slack保存です。
+現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step3の外部収集入口、Step3.6のDecision-First UI改善までを実装しています。次の拡張候補は収集結果のローカル永続化、RSS対象の調整、Step4のAI分析強化、Notion/Slack保存です。
