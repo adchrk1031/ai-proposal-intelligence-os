@@ -581,6 +581,55 @@ h4 {
   gap: 10px;
 }
 
+.source-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.source-status {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.source-status > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-status p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--subtle);
+}
+
+.source-status.ok .status-dot {
+  background: var(--accent);
+}
+
+.source-status.error .status-dot {
+  background: var(--red);
+}
+
+.source-status.mock .status-dot,
+.source-status.fallback .status-dot {
+  background: var(--blue);
+}
+
+.source-error {
+  color: var(--red) !important;
+}
+
 .source-card {
   display: flex;
   justify-content: space-between;
@@ -724,5 +773,331 @@ h4 {
 
   .source-card {
     flex-direction: column;
+  }
+}
+
+/* Step 2.5: compact morning brief */
+:root {
+  --ink: #18212b;
+  --muted: #5f6b77;
+  --subtle: #8b96a1;
+  --page: #f6f7f8;
+  --accent: #0f5f63;
+  --accent-soft: #edf6f4;
+  --blue: #243b63;
+  --shadow: 0 4px 14px rgba(24, 33, 43, 0.045);
+}
+
+.sidebar {
+  background: #ffffff;
+}
+
+.main {
+  padding-top: 22px;
+}
+
+.topbar {
+  align-items: flex-start;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.topbar h2 {
+  font-size: 24px;
+}
+
+.topbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.status-pill {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.status-pill strong {
+  color: var(--ink);
+}
+
+.run-meta {
+  margin: -8px 0 14px 2px;
+  color: var(--subtle);
+  font-size: 12px;
+}
+
+.primary-button {
+  min-width: 148px;
+  box-shadow: none;
+}
+
+.content {
+  gap: 14px;
+}
+
+.morning-brief {
+  padding: 18px 20px;
+  border: 1px solid #d7e6e3;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.morning-brief h3 {
+  margin-top: 8px;
+  font-size: clamp(21px, 2.6vw, 30px);
+  line-height: 1.35;
+}
+
+.morning-brief p {
+  max-width: 980px;
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.brief-inline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.brief-inline span {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.brief-inline strong {
+  color: var(--subtle);
+  font-size: 12px;
+}
+
+.today-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
+  gap: 14px;
+}
+
+.side-stack {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.block {
+  padding: 18px;
+}
+
+.compact-block {
+  padding: 16px;
+}
+
+.block-heading {
+  margin-bottom: 12px;
+}
+
+.opportunity-card {
+  padding: 15px 16px;
+}
+
+.opportunity-card.rank-s {
+  border-color: #b9d8d4;
+  background: #ffffff;
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.card-top {
+  align-items: start;
+}
+
+.rank-badge {
+  min-width: 44px;
+  height: 26px;
+  background: var(--blue);
+  font-size: 12px;
+}
+
+.rank-s .rank-badge {
+  background: var(--accent);
+}
+
+.opportunity-card h4 {
+  font-size: 18px;
+}
+
+.event-line,
+.one-line {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+.event-line strong,
+.one-line strong {
+  color: var(--ink);
+}
+
+.highlight {
+  margin: 12px 0 10px;
+  padding: 12px 13px;
+  background: #f4faf8;
+}
+
+.highlight strong {
+  font-size: 16px;
+}
+
+.chip-row {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.chip {
+  min-height: 24px;
+  border-color: #d9e6e3;
+  color: #31585d;
+  background: #f7fbfa;
+  font-size: 12px;
+}
+
+.mini-doc-list,
+.brief-idea-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.mini-doc-card,
+.brief-idea-card {
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.mini-doc-card h4,
+.brief-idea-card h4 {
+  font-size: 15px;
+}
+
+.mini-doc-card p,
+.brief-idea-card p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mini-doc-card strong,
+.brief-idea-card strong {
+  color: var(--ink);
+}
+
+.mini-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.small-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.brief-idea-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.check-list.short li {
+  margin: 7px 0;
+}
+
+.timeline-item h4,
+.idea-card h4,
+.doc-card h4,
+.source-card h4 {
+  color: var(--ink);
+}
+
+.doc-card .meta {
+  margin-bottom: 10px;
+}
+
+@media (max-width: 1080px) {
+  .today-layout,
+  .brief-idea-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  .topbar {
+    margin-top: 2px;
+  }
+
+  .mode-card {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .main {
+    padding: 14px 12px 36px;
+  }
+
+  .topbar {
+    padding: 14px;
+  }
+
+  .topbar-actions {
+    justify-content: stretch;
+  }
+
+  .status-pill,
+  .primary-button {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .brief-inline {
+    grid-template-columns: 1fr;
+  }
+
+  .morning-brief,
+  .block,
+  .compact-block {
+    padding: 14px;
+  }
+
+  .opportunity-card h4 {
+    font-size: 16px;
+  }
+
+  .highlight strong {
+    font-size: 15px;
   }
 }

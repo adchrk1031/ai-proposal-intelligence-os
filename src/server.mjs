@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getConfig, loadDotEnv, publicConfig } from "./config.mjs";
 import { runIntelligencePipeline } from "./pipeline.mjs";
+import { publicSourceDefinitions } from "./sources.mjs";
 
 loadDotEnv();
 
@@ -50,6 +51,11 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && req.url.startsWith("/api/config")) {
       sendJson(res, 200, publicConfig(getConfig()));
+      return;
+    }
+
+    if (req.method === "GET" && req.url.startsWith("/api/sources")) {
+      sendJson(res, 200, { sources: publicSourceDefinitions() });
       return;
     }
 

@@ -55,6 +55,7 @@ APIキーやWebhook URLは `.env` に入れ、コミットしないでくださ�
 ## API
 
 - `GET /api/config`: 現在の安全な設定を返す
+- `GET /api/sources`: 外部収集入口のソース定義を返す
 - `POST /api/run`: 情報収集から提案インテリジェンス生成まで実行
 
 ## Step 2 UI/UX
@@ -78,6 +79,52 @@ Mockで動く初期版を、毎日確認する「AI Opportunity Brief」とし�
 - Loading / Empty / Error / 無料枠超過メッセージを画面側で表示
 - スマホではナビゲーションを横スクロール、カードを縦積み表示
 
+## Step 2.5 Morning Brief Polish
+
+Today画面を「毎朝5分で見られるAI Opportunity Brief」としてさらに圧縮しました。
+
+- 上部ヘッダーを小さくし、日付、Mode、推定コスト、Run Intelligenceをすぐ確認できる配置に変更
+- 最上部に「今日の結論」「今日の注目領域」「おすすめアクション」をまとめた短いブリーフカードを追加
+- TOP3カードは縦読み構成に変更し、日本語タイトル、何が起きたか、何ができるようになったか、使える業務、提案ネタ、次アクションだけを表示
+- Mockデータに日本語タイトル、提案タイトル、解決課題、PoC難易度、必要ツールを追加
+- Design Docsへの導線をToday上部のサイドブロックへ移動
+- 色と装飾をネイビー、グレー、薄いミント中心に抑え、影も薄く調整
+- スマホではTOP3が早く見えるよう、カードとボタンを1カラムで大きめに表示
+
+## Step 3 Collection Entry
+
+外部API連携の本格化前に、公開ソースをOpportunitySignal形式へ正規化する入口を追加しました。OpenAI/Geminiでの深いAI分析、Notion保存、Slack通知、GitHub Actions本格運用、X API連携はまだ行っていません。
+
+### Implemented Collectors
+
+- RSS Collector: 一般RSS/Atomを取得
+- arXiv Collector: arXiv Atom APIを取得
+- Official Blog RSS Collector: OpenAI、Google AI、Anthropic、Microsoft AIなどの公式ブログ入口
+- GitHub Trending Collector: HTML取得ベースの雛形
+- Hacker News Collector: Firebase公開APIベースの雛形
+- Mock fallback: `APP_MODE=mock` または外部取得0件/失敗時にMockへ戻す
+
+### Normalized Shape
+
+収集したデータは、後続の提案変換に渡しやすいように以下を保持します。
+
+```ts
+type OpportunitySignal = {
+  title: string;
+  url: string;
+  sourceName: string;
+  sourceType: string;
+  publishedAt: string;
+  rawSummary: string;
+  tags: string[];
+  collectedAt: string;
+};
+```
+
+### Source Status
+
+`/api/run` の結果に `collection.sourceReports` を含め、Sources画面で各ソースの取得状態、件数、エラー、Mock fallback有無を確認できます。
+
 ## Current Scope
 
-現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step2のMock画面品質改善までを実装しています。次の拡張候補はRSS、GitHub Trending、arXiv、Notion/Slack保存です。
+現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step2.5のMorning Brief品質改善、Step3の外部収集入口までを実装しています。次の拡張候補は収集結果のローカル永続化、RSS対象の調整、Step4のAI分析強化、Notion/Slack保存です。

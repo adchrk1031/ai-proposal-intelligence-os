@@ -5,7 +5,8 @@ const RANK_ORDER = { S: 0, A: 1, B: 2, C: 3 };
 
 export async function runIntelligencePipeline(config, env = process.env) {
   const startedAt = new Date().toISOString();
-  const rawItems = await collectItems(config);
+  const collection = await collectItems(config);
+  const rawItems = collection.items;
   const limitedItems = rawItems.slice(0, config.costGuard.maxItemsPerRun);
   const items = [];
 
@@ -20,10 +21,12 @@ export async function runIntelligencePipeline(config, env = process.env) {
       config.costGuard.deepAnalysisForSRankOnly ? item.rank === "S" : item.rank === "S" || item.rank === "A"
     )
     .slice(0, config.costGuard.maxDesignDocsPerRun)
-    .map((item) => ({
-      itemId: item.id,
-      title: `${item.title} 活用PoC設計書`,
-      sections: [
+    .map((item) => {
+      const title = item.titleJa || item.title;
+      return {
+        itemId: item.id,
+        title: `${title} 活用PoC設計書`,
+        sections: [
         "背景と狙い",
         "対象業務",
         "ユーザーストーリー",
@@ -32,9 +35,10 @@ export async function runIntelligencePipeline(config, env = process.env) {
         "評価指標",
         "リスクとfallback",
         "PoCスケジュール"
-      ],
-      seed: item.designDocSeeds
-    }));
+        ],
+        seed: item.designDocSeeds
+      };
+    });
 
   return {
     startedAt,
@@ -45,7 +49,15 @@ export async function runIntelligencePipeline(config, env = process.env) {
       collected: rawItems.length,
       analyzed: ranked.length,
       designDocCandidates: designDocCandidates.length,
-      fallbackUsed: ranked.filter((item) => item.fallbackUsed).length
+      fallbackUsed: ranked.filter((item) => item.fallbackUsed).length,
+      sourcesChecked: collection.sourceReports.length,
+      sourcesOk: collection.sourceReports.filter((source) => source.status === "ok").length,
+      sourceErrors: collection.sourceReports.filter((source) => source.status === "error").length
+    },
+    collection: {
+      collectedAt: collection.collectedAt,
+      usedMockFallback: collection.usedMockFallback,
+      sourceReports: collection.sourceReports
     },
     items: ranked,
     designDocCandidates

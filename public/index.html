@@ -48,14 +48,18 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Today</p>
-            <h2 id="viewTitle">今日のAI Opportunity Brief</h2>
+            <p class="eyebrow" id="todayDate">Today</p>
+            <h2 id="viewTitle">AI Proposal Intelligence OS</h2>
           </div>
           <div class="topbar-actions">
-            <span id="timestamp" class="timestamp">Not run yet</span>
-            <button id="runButton" class="primary-button" type="button">更新</button>
+            <span class="status-pill">Mode: <strong id="modeTop">loading</strong></span>
+            <span class="status-pill">推定コスト: <strong id="costTop">loading</strong></span>
+            <button id="runButton" class="primary-button" type="button">Run Intelligence</button>
           </div>
         </header>
+        <div class="run-meta">
+          <span id="timestamp">Not run yet</span>
+        </div>
 
         <section id="notice" class="notice hidden" aria-live="polite"></section>
         <section id="content" class="content" aria-live="polite">
