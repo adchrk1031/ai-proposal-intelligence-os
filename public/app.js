@@ -67,15 +67,92 @@ function estimateCost(config, result) {
   return count ? "API従量課金" : "paid ready";
 }
 
+function shortDate(dateLike = new Date()) {
+  return new Date(dateLike).toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short"
+  });
+}
+
+function shortTime(dateLike) {
+  if (!dateLike) return "not yet";
+  return new Date(dateLike).toLocaleString("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function sourceCostType(source) {
+  return source.sourceType === "mock" ? "free/mock" : "free/public";
+}
+
+function sourceNote(source) {
+  if (source.status === "error") return "取得に失敗。Mock fallbackまたは次回実行で再確認します。";
+  if (source.status === "mock") return "外部通信なしで表示確認するための安全なMockデータです。";
+  if (source.status === "fallback") return "外部取得が0件または失敗したためMockへ戻しました。";
+  return "公開ソースから取得し、OpportunitySignal形式へ正規化しました。";
+}
+
+function industryFor(item) {
+  return item.targetCompanies?.[0] || "AI活用を検討する企業";
+}
+
+function departmentFor(item) {
+  if ((item.focusArea || "").includes("開発")) return "開発部門";
+  if ((item.focusArea || "").includes("長文")) return "情報システム / 管理部門";
+  if ((item.focusArea || "").includes("エージェント")) return "営業 / CS / 情シス";
+  return "事業開発 / DX推進";
+}
+
+function impactFor(item) {
+  if (item.rank === "S") return "高: 横展開しやすい提案テーマ";
+  if (item.rank === "A") return "中: 部門PoCに向く";
+  return "検証向き";
+}
+
+function docTitle(doc) {
+  const item = state.result.items.find((candidate) => candidate.id === doc.itemId);
+  return item ? `${item.focusArea || itemTitle(item)} PoC設計書` : doc.title;
+}
+
+function buildDailyBriefText() {
+  const top = topItems(3);
+  const themes = [...new Set(top.map((item) => item.focusArea || item.signals?.[0]).filter(Boolean))].slice(0, 3);
+  return [
+    `# AI Opportunity Brief - ${shortDate()}`,
+    "",
+    `## 今日の結論`,
+    `今日は${themes.join("・") || "AI活用"}の更新が重要です。${top[0]?.salesTalk || ""}`,
+    "",
+    `## 重要アップデート TOP3`,
+    ...top.map((item, index) => `${index + 1}. ${itemTitle(item)}\n   - できること: ${item.whatBecamePossible?.[0] || ""}\n   - 提案ネタ: ${proposalTitle(item)}`)
+  ].join("\n");
+}
+
+function buildDesignDocText(doc) {
+  const item = state.result.items.find((candidate) => candidate.id === doc.itemId);
+  return [
+    `# ${docTitle(doc)}`,
+    "",
+    `- 元ネタ: ${item ? itemTitle(item) : doc.title}`,
+    `- 対象業務: ${item?.businessUseCases?.[0] || "業務改善"}`,
+    `- PoC範囲: ${item?.pocIdeas?.[0] || "小規模PoC"}`,
+    `- 必要ツール: ${(item?.requiredTools || ["業務データ"]).join(" / ")}`,
+    `- 次アクション: ${item?.nextAction || "PoC要件を整理する"}`,
+    "",
+    `## セクション`,
+    ...(doc.sections || []).map((section) => `- ${section}`)
+  ].join("\n");
+}
+
 function renderConfig(config) {
   setText(
     "#todayDate",
-    new Date().toLocaleDateString("ja-JP", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      weekday: "short"
-    })
+    shortDate()
   );
   setText("#mode", config.appMode);
   setText("#modeTop", config.appMode);
@@ -84,6 +161,7 @@ function renderConfig(config) {
   const cost = estimateCost(config, state.result);
   setText("#cost", cost);
   setText("#costTop", cost);
+  setText("#lastRunSide", shortTime(state.result?.finishedAt));
 }
 
 function showNotice(kind, message) {
@@ -131,65 +209,69 @@ function renderToday() {
   const top = topItems(3);
   const primary = top[0];
   const docs = state.result.designDocCandidates;
-  const possible = [...new Set(top.flatMap((item) => item.whatBecamePossible).slice(0, 4))];
+  const possible = [...new Set(top.flatMap((item) => item.whatBecamePossible).slice(0, 5))];
   const ideas = items.slice(0, 3);
   const focusAreas = [...new Set(top.map((item) => item.focusArea || item.signals?.[0]).filter(Boolean))].slice(0, 3);
 
   return `
+    <section class="today-date-row">
+      <span>${escapeHtml(shortDate(state.result.finishedAt))}</span>
+      <button class="text-button" type="button" data-copy-daily="true">Daily Briefをコピー</button>
+    </section>
+
     <section class="morning-brief">
-      <span class="pill">今日の結論</span>
-      <h3>今日は${escapeHtml(focusAreas.join("・") || "AI活用")}の更新が重要です。</h3>
-      <p>${escapeHtml(primary?.salesTalk || "重要なAIアップデートを、業務提案・PoC・設計書へ変換しました。")}</p>
+      <div class="brief-headline">
+        <span class="pill">今日の結論</span>
+        <h3>今日は${escapeHtml(focusAreas.join("・") || "AI活用")}を提案化する日です。</h3>
+        <p>${escapeHtml(primary?.salesTalk || "重要なAIアップデートを、業務提案・PoC・設計書へ変換しました。")}</p>
+      </div>
       <div class="brief-inline">
-        <span><strong>注目領域</strong>${escapeHtml(focusAreas.join(" / ") || "AI提案")}</span>
-        <span><strong>おすすめアクション</strong>${escapeHtml(primary?.nextAction || "Sランクの設計書候補を1件確認する")}</span>
+        <span><strong>注目テーマ</strong>${escapeHtml(focusAreas.join(" / ") || "AI提案")}</span>
+        <span><strong>事業活用</strong>${escapeHtml(primary?.businessDevelopmentAngles?.[0] || "小さなPoCから横展開する")}</span>
+        <span><strong>今日やること</strong>${escapeHtml(primary?.nextAction || "Sランクの設計書候補を1件確認する")}</span>
       </div>
     </section>
 
-    <div class="today-layout">
-      <section class="block">
-        <div class="block-heading">
-          <h3>重要アップデート TOP3</h3>
-          <span>5秒で判断</span>
-        </div>
-        <div class="stack">${top.map(renderOpportunityCard).join("")}</div>
-      </section>
-
-      <div class="side-stack">
-        <section class="block compact-block">
-          <div class="block-heading">
-            <h3>今日見るべき設計書</h3>
-            <button class="text-button" type="button" data-view-link="docs">一覧へ</button>
-          </div>
-          <div class="mini-doc-list">${docs.slice(0, 2).map(renderMiniDocCard).join("")}</div>
-        </section>
-
-        <section class="block compact-block">
-          <div class="block-heading">
-            <h3>今日できるようになったこと</h3>
-          </div>
-          <ul class="check-list short">${list(possible)}</ul>
-        </section>
-
-        <section class="block compact-block">
-          <div class="block-heading">
-            <h3>次アクション</h3>
-          </div>
-          <ol class="action-list">
-            <li>設計書候補を1件開く</li>
-            <li>提案先企業を3社に絞る</li>
-            <li>Slack共有文へ整える</li>
-          </ol>
-        </section>
+    <section class="brief-section">
+      <div class="section-kicker">
+        <h3>重要アップデート TOP3</h3>
+        <span>Signal over noise</span>
       </div>
-    </div>
+      <div class="stack">${top.map(renderOpportunityCard).join("")}</div>
+    </section>
 
-    <section class="block">
-      <div class="block-heading">
+    <section class="brief-section">
+      <div class="section-kicker">
+        <h3>今日できるようになったこと</h3>
+      </div>
+      <ul class="capability-list">${possible.map((text) => `<li>${escapeHtml(text)}</li>`).join("")}</ul>
+    </section>
+
+    <section class="brief-section">
+      <div class="section-kicker">
         <h3>今日の提案ネタ</h3>
         <button class="text-button" type="button" data-view-link="ideas">Ideasへ</button>
       </div>
       <div class="brief-idea-grid">${ideas.map(renderBriefIdeaCard).join("")}</div>
+    </section>
+
+    <section class="brief-section">
+      <div class="section-kicker">
+        <h3>今日見るべき設計書</h3>
+        <button class="text-button" type="button" data-view-link="docs">Design Docsへ</button>
+      </div>
+      <div class="mini-doc-list">${docs.slice(0, 3).map(renderMiniDocCard).join("")}</div>
+    </section>
+
+    <section class="brief-section">
+      <div class="section-kicker">
+        <h3>次アクション</h3>
+      </div>
+      <ol class="next-action-list">
+        <li>Design Docを1件コピーし、PoC前提を確認する</li>
+        <li>提案トークを1つ選び、対象会社を3社に絞る</li>
+        <li>Daily Briefをチーム共有用に貼り付ける</li>
+      </ol>
     </section>
   `;
 }
@@ -212,6 +294,10 @@ function renderOpportunityCard(item) {
       <div class="chip-row">${chips(item.businessUseCases.slice(0, 3))}</div>
       <p class="one-line"><strong>提案ネタ:</strong> ${escapeHtml(proposalTitle(item))}</p>
       <p class="one-line"><strong>次アクション:</strong> ${escapeHtml(item.nextAction || item.pocIdeas[0])}</p>
+      <div class="card-actions">
+        <button class="text-button" type="button" data-copy="${escapeHtml(item.salesTalk)}">提案トークをコピー</button>
+        <button class="text-button" type="button" data-copy="${escapeHtml(item.socialPost)}">SNS投稿案をコピー</button>
+      </div>
     </article>
   `;
 }
@@ -223,6 +309,7 @@ function renderBriefIdeaCard(item) {
       <p><strong>対象会社:</strong> ${escapeHtml(item.targetCompanies[0])}</p>
       <p><strong>解決課題:</strong> ${escapeHtml(item.problemToSolve || item.businessUseCases[0])}</p>
       <p>${escapeHtml(item.salesTalk)}</p>
+      <button class="text-button inline-copy" type="button" data-copy="${escapeHtml(item.salesTalk)}">提案トークをコピー</button>
     </article>
   `;
 }
@@ -238,36 +325,36 @@ function renderMiniDocCard(doc) {
       <p><strong>必要ツール:</strong> ${escapeHtml(tools.slice(0, 3).join(" / "))}</p>
       <div class="mini-actions">
         <button class="secondary-button small-button" type="button" data-view-link="docs">開く</button>
-        <button class="secondary-button small-button" type="button" data-copy="${escapeHtml(title)}">コピー</button>
+        <button class="secondary-button small-button" type="button" data-copy="${escapeHtml(buildDesignDocText(doc))}">コピー</button>
       </div>
     </article>
   `;
 }
 
 function renderTimeline() {
+  const top = topItems(3);
+  const conclusion = top[0]?.whatBecamePossible?.[0] || "AI情報を提案資産に変換しました";
   return `
-    <section class="block">
-      <div class="block-heading">
+    <section class="brief-section">
+      <div class="section-kicker">
         <h3>Timeline</h3>
-        <span>${state.result.items.length} updates</span>
+        <span>日次Brief履歴</span>
       </div>
-      <div class="timeline">
-        ${state.result.items
-          .map(
-            (item) => `
-              <article class="timeline-item">
-                <time>${new Date(item.publishedAt).toLocaleDateString("ja-JP")}</time>
-                <div>
-                  <span class="rank-badge small">${escapeHtml(item.rank)}</span>
-                  <h4>${escapeHtml(itemTitle(item))}</h4>
-                  <p class="meta">${escapeHtml(itemSubtitle(item))}</p>
-                  <p>${escapeHtml(item.whatBecamePossible[0])}</p>
-                  <div class="chip-row">${chips(item.signals.slice(0, 5))}</div>
-                </div>
-              </article>
-            `
-          )
-          .join("")}
+      <div class="timeline-day-list">
+        <article class="timeline-day-card">
+          <div>
+            <time>${escapeHtml(shortDate(state.result.finishedAt))}</time>
+            <h4>${escapeHtml(conclusion)}</h4>
+            <p>今日の重要アップデートを、提案ネタと設計書候補へ整理しました。</p>
+          </div>
+          <div class="timeline-metrics">
+            <span><strong>${state.result.items.length}</strong>重要アップデート件数</span>
+            <span><strong>${state.result.items.slice(0, 3).length}</strong>生成Ideas数</span>
+            <span><strong>${state.result.designDocCandidates.length}</strong>生成Design Docs数</span>
+            <span><strong>${escapeHtml(estimateCost(state.config, state.result))}</strong>推定コスト</span>
+          </div>
+          <button class="secondary-button small-button" type="button" data-view-link="today">開く</button>
+        </article>
       </div>
     </section>
   `;
@@ -275,10 +362,10 @@ function renderTimeline() {
 
 function renderIdeas() {
   return `
-    <section class="block">
-      <div class="block-heading">
+    <section class="brief-section">
+      <div class="section-kicker">
         <h3>提案ネタ Ideas</h3>
-        <span>PoC / 営業 / 事業開発</span>
+        <span>${state.result.items.length} cards</span>
       </div>
       <div class="idea-grid">
         ${state.result.items
@@ -287,15 +374,16 @@ function renderIdeas() {
               <article class="idea-card">
                 <span class="rank-badge small">${escapeHtml(item.rank)}</span>
                 <h4>${escapeHtml(proposalTitle(item))}</h4>
-                <p>${escapeHtml(item.salesTalk)}</p>
-                <div class="idea-section">
-                  <strong>PoC案</strong>
-                  <ul>${list(item.pocIdeas.slice(0, 2))}</ul>
+                <div class="idea-fields">
+                  <p><strong>対象業界</strong>${escapeHtml(industryFor(item))}</p>
+                  <p><strong>対象部署</strong>${escapeHtml(departmentFor(item))}</p>
+                  <p><strong>解決課題</strong>${escapeHtml(item.problemToSolve || item.businessUseCases[0])}</p>
+                  <p><strong>PoC難易度</strong>${escapeHtml(item.pocDifficulty || "中")}</p>
+                  <p><strong>事業インパクト</strong>${escapeHtml(impactFor(item))}</p>
+                  <p><strong>関連設計書</strong>${escapeHtml(item.focusArea || itemTitle(item))} PoC設計書</p>
                 </div>
-                <div class="idea-section">
-                  <strong>提案先</strong>
-                  <div class="chip-row">${chips(item.targetCompanies.slice(0, 4))}</div>
-                </div>
+                <p class="talk-preview">${escapeHtml(item.salesTalk)}</p>
+                <button class="text-button inline-copy" type="button" data-copy="${escapeHtml(item.salesTalk)}">提案トークをコピー</button>
               </article>
             `
           )
@@ -307,20 +395,25 @@ function renderIdeas() {
 
 function renderDocCard(doc) {
   const item = state.result.items.find((candidate) => candidate.id === doc.itemId);
-  const title = item ? `${item.focusArea || itemTitle(item)} PoC設計書` : doc.title;
   return `
     <article class="doc-card">
-      <h4>${escapeHtml(title)}</h4>
-      <p class="meta">難易度: ${escapeHtml(item?.pocDifficulty || "中")} / 必要ツール: ${escapeHtml((item?.requiredTools || ["業務データ"]).slice(0, 3).join(" / "))}</p>
-      <ol>${list(doc.sections.slice(0, 6))}</ol>
+      <h4>${escapeHtml(docTitle(doc))}</h4>
+      <div class="doc-fields">
+        <p><strong>元ネタ</strong>${escapeHtml(item ? itemTitle(item) : doc.title)}</p>
+        <p><strong>対象業務</strong>${escapeHtml(item?.businessUseCases?.[0] || "業務改善")}</p>
+        <p><strong>PoC範囲</strong>${escapeHtml(item?.pocIdeas?.[0] || "小規模PoC")}</p>
+        <p><strong>必要ツール</strong>${escapeHtml((item?.requiredTools || ["業務データ"]).slice(0, 3).join(" / "))}</p>
+        <p><strong>次アクション</strong>${escapeHtml(item?.nextAction || "要件を整理する")}</p>
+      </div>
+      <button class="secondary-button small-button" type="button" data-copy="${escapeHtml(buildDesignDocText(doc))}">Markdownコピー</button>
     </article>
   `;
 }
 
 function renderDocs() {
   return `
-    <section class="block">
-      <div class="block-heading">
+    <section class="brief-section">
+      <div class="section-kicker">
         <h3>Design Docs</h3>
         <span>${state.result.designDocCandidates.length} candidates</span>
       </div>
@@ -332,11 +425,21 @@ function renderDocs() {
 function renderSources() {
   const reports = state.result.collection?.sourceReports || [];
   const usedFallback = state.result.collection?.usedMockFallback;
+  const okCount = reports.filter((source) => source.status === "ok").length;
+  const errorCount = reports.filter((source) => source.status === "error").length;
+  const mockCount = reports.filter((source) => source.status === "mock" || source.status === "fallback").length;
   return `
-    <section class="block">
-      <div class="block-heading">
+    <section class="brief-section">
+      <div class="section-kicker">
         <h3>Sources</h3>
         <span>${reports.length} checked / ${usedFallback ? "Mock fallback" : "Live entry"}</span>
+      </div>
+      <div class="source-summary-grid">
+        <article><strong>${reports.length}</strong><span>有効ソース数</span></article>
+        <article><strong>${okCount}</strong><span>成功ソース数</span></article>
+        <article><strong>${errorCount}</strong><span>エラーソース数</span></article>
+        <article><strong>${mockCount}</strong><span>Mock fallback数</span></article>
+        <article><strong>${escapeHtml(estimateCost(state.config, state.result))}</strong><span>推定コスト</span></article>
       </div>
       <div class="source-status-grid">
         ${reports
@@ -347,7 +450,11 @@ function renderSources() {
                   <span class="status-dot"></span>
                   <strong>${escapeHtml(source.sourceName)}</strong>
                 </div>
-                <p>${escapeHtml(source.sourceType)} / ${escapeHtml(source.status)} / ${source.itemCount} items</p>
+                <p><strong>種別</strong>${escapeHtml(source.sourceType)}</p>
+                <p><strong>status</strong>${escapeHtml(source.status)} / ${source.itemCount} items</p>
+                <p><strong>costType</strong>${escapeHtml(sourceCostType(source))}</p>
+                <p><strong>lastCollectedAt</strong>${escapeHtml(shortTime(source.checkedAt))}</p>
+                <p><strong>notesJa</strong>${escapeHtml(sourceNote(source))}</p>
                 ${source.error ? `<p class="source-error">${escapeHtml(source.error)}</p>` : ""}
               </article>
             `
@@ -356,8 +463,8 @@ function renderSources() {
       </div>
     </section>
 
-    <section class="block">
-      <div class="block-heading">
+    <section class="brief-section">
+      <div class="section-kicker">
         <h3>Collected Signals</h3>
         <span>${state.result.items.length} normalized</span>
       </div>
@@ -461,6 +568,7 @@ contentEl.addEventListener("click", (event) => {
   const retry = event.target.closest("[data-action='retry']");
   const viewLink = event.target.closest("[data-view-link]");
   const copyButton = event.target.closest("[data-copy]");
+  const dailyCopy = event.target.closest("[data-copy-daily]");
   if (retry) runPipeline();
   if (viewLink) {
     state.activeView = viewLink.dataset.viewLink;
@@ -468,7 +576,11 @@ contentEl.addEventListener("click", (event) => {
   }
   if (copyButton) {
     navigator.clipboard?.writeText(copyButton.dataset.copy);
-    showNotice("success", "設計書タイトルをコピーしました。");
+    showNotice("success", "コピーしました。");
+  }
+  if (dailyCopy) {
+    navigator.clipboard?.writeText(buildDailyBriefText());
+    showNotice("success", "Daily Briefをコピーしました。");
   }
 });
 

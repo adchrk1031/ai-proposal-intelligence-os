@@ -78,5 +78,25 @@ export const mockItems = [
     summary:
       "The paper compares a single large model with routed specialist agents and reports better reliability on narrow business workflows.",
     signals: ["multi-agent", "routing", "reliability", "enterprise"]
+  },
+  {
+    id: "mock-image-generation-business",
+    title: "Image generation tools become more practical for brand-safe business content",
+    titleJa: "画像生成の実務化で、営業資料・SNS画像の初稿作成が速くなる",
+    whatHappenedJa:
+      "ブランドトーンを保ちながら、営業資料やSNS投稿用の画像案を短時間で作りやすくなった。",
+    proposalTitle: "営業・広報向けの画像初稿生成ワークフロー",
+    problemToSolve: "資料やSNS用の画像制作が都度発生し、初稿作成に時間がかかる",
+    nextAction: "既存ブランド資料を3件選び、画像生成ルールとレビュー観点を整理する",
+    focusArea: "画像生成",
+    pocDifficulty: "低",
+    requiredTools: ["ブランドガイドライン", "営業資料", "画像生成UI"],
+    sourceKind: "tech_blog",
+    sourceName: "AI Design Blog",
+    url: "https://example.com/ai-image-generation-business",
+    publishedAt: "2026-04-20T10:15:00.000Z",
+    summary:
+      "Image generation workflows are becoming useful for sales decks, campaign visuals, and social post drafts with human review.",
+    signals: ["image generation", "sales", "marketing", "brand review"]
   }
 ];

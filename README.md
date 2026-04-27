@@ -125,6 +125,20 @@ type OpportunitySignal = {
 
 `/api/run` の結果に `collection.sourceReports` を含め、Sources画面で各ソースの取得状態、件数、エラー、Mock fallback有無を確認できます。
 
+## Step 3.5 UI/UX Polish
+
+外部API連携やAI分析ロジックを変更せず、毎朝5分で読める「AI Opportunity Brief」体験へUIを磨き込みました。
+
+- 背景、カード、文字色、境界線をNotion-likeな落ち着いたトーンへ調整
+- Today画面を「日付 → 今日の結論 → TOP3 → できること → 提案ネタ → 設計書 → 次アクション」の順に再構成
+- TOP3カードは日本語タイトルを主役にし、英語タイトルは小さく補足表示
+- Sources画面に有効ソース数、成功、エラー、Mock fallback、推定コストのサマリーを追加
+- Timelineは日次Briefカード形式に変更
+- Ideasは対象業界、対象部署、解決課題、PoC難易度、事業インパクト、関連設計書を表示
+- Design Docsは元ネタ、対象業務、PoC範囲、必要ツール、次アクションを表示
+- Daily Brief、Design Doc、提案トーク、SNS投稿案のコピー導線を追加
+- スマホでは上部ナビ、1カラムカード、大きめボタンで読みやすく調整
+
 ## Current Scope
 
-現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step2.5のMorning Brief品質改善、Step3の外部収集入口までを実装しています。次の拡張候補は収集結果のローカル永続化、RSS対象の調整、Step4のAI分析強化、Notion/Slack保存です。
+現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step3の外部収集入口、Step3.5のUI/UX改善までを実装しています。次の拡張候補は収集結果のローカル永続化、RSS対象の調整、Step4のAI分析強化、Notion/Slack保存です。
