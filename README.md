@@ -2,6 +2,8 @@
 
 海外AI情報を「読んで終わり」にせず、提案ネタ、PoC案、設計書の種、営業トーク、社内共有文、SNS投稿に変換するためのAI事業開発ナレッジ基盤です。
 
+継続開発時の恒久ルールと設計原則は [AGENTS.md](/Users/adachih/Codex/AI%20News/AGENTS.md) を参照してください。
+
 この初期版は無料運用を最優先にした、外部依存なしのNodeアプリです。APIキーなしでもMock Modeで動き、有料APIは `APP_MODE=paid` かつ `PAID_AI_ENABLED=true` の時だけ呼び出します。
 
 ## Quick Start
@@ -152,6 +154,99 @@ Step3.6では、読む画面ではなく「判断する画面」としてさら�
 - Timelineは日付、結論1行、件数、開くボタンだけに圧縮
 - Mockデータに短い `capabilityTitle` / `shortDescription` / `expectedEffect` を追加
 
-## Current Scope
+## Step 3.8 Product Polish
 
-現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step3の外部収集入口、Step3.6のDecision-First UI改善までを実装しています。次の拡張候補は収集結果のローカル永続化、RSS対象の調整、Step4のAI分析強化、Notion/Slack保存です。
+Step3.8では、機能追加ではなくUI/UXの完成度を上げ、Todayを「3秒で判断する」画面へさらに整理しました。外部API連携、Collector、Cost Guard、モード制御、有料APIを呼ばない安全設計は変更していません。
+
+- Top Barを `AI Proposal OS`、日付、モード、推定コスト、Runだけに圧縮
+- Todayを「今日の結論 → 今日できることTOP3 → 次にやること → 提案ネタ → 設計書 → 収集状態」の順に整理
+- TOP3はニュース名ではなく、日本語の「できることタイトル」を主役に表示
+- カード本文を短くし、英語タイトル、長い営業トーク、SNS投稿案、設計書本文、Source詳細は `詳しく見る` やコピーに収納
+- Ideasは提案タイトル、対象、解決課題、期待効果、難易度、コピーだけを主表示
+- Design DocsはPoC候補を選ぶ画面として、目的、必要ツール、難易度、次アクションを主表示
+- Sourcesは正常、エラー、Mock、今日のコストを先に表示し、詳細ソースは折りたたみに変更
+- コピー後のメッセージを `Slackに貼れます`、`SNS投稿案をコピーしました`、`Notion用Markdownをコピーしました` のように用途別に表示
+- Mockデータに短い営業トークとSNS投稿案を追加し、次アクションも40字以内を目安に短文化
+- CSSを整理し、白基調、薄い境界線、余白多め、スマホ1カラムの業務ツールUIに調整
+
+## Step 4 Daily Proposal OS
+
+Step4では、見た目の整理だけでなく「毎朝3分で判断する」運用体験へ寄せました。ニュース一覧ではなく、今日どれを提案・PoC・設計書候補に進めるべきかを最短で判断できるUIを目指しています。
+
+### Current UI Concept
+
+- ChatGPT / Notion / Slack / LINE / Codex のような、白ベースで余白多めの軽いUI
+- ニュースアプリではなく、提案OSとして「判断 → 共有 → 次アクション」へ進みやすい構成
+- 色は重要度や状態表示にだけ使い、装飾ではなく階層と余白で理解しやすくする
+- Briefカードを主役にし、Sourcesやログは運用確認として一段下に置く
+
+### Screen Layout
+
+- `Today`: ヒーロー、4つのサマリー、最小フィルター、Briefカード、次にやること、設計書候補、収集ログ
+- `Timeline`: 今日 / 昨日 / 今週 / 保存済みBrief / 新規ネタ / 更新されたネタ / 提案化済み / Slack共有済み / Notion保存済み を確認
+- `Ideas`: 提案ネタとして使える項目を優先理由付きで一覧表示
+- `Design Docs`: 設計書候補をPoCの下書きとして確認
+- `Sources`: source name, status, fetched count, last fetched at, error reason, success rate, 直近エラー, fallback使用有無を確認
+
+### Brief Card Priority Rules
+
+Briefカードは単純なランク順ではなく、ルールベースの「今日やる価値順」で並べています。スコアリング関数はフロント側に分離してあり、将来はLLMスコアリングに置き換えやすい構成です。
+
+- `S` ランクを最優先
+- `A` ランクを次点で優先
+- PoC候補を優先
+- 設計書候補を優先
+- 社内活用しやすいテーマを優先
+- 3日以内に試せるテーマを優先
+- 営業提案に使いやすいテーマを優先
+- 新しい情報を優先
+- 同じようなテーマが並びすぎないように、focus areaベースで軽く分散
+
+カード上には `S / PoC候補 / 3日以内に試せる` のように、上位理由をそのまま表示します。
+
+### Mock Run
+
+Web UI:
+
+```bash
+cp .env.example .env
+node src/server.mjs
+```
+
+CLIでMock実行:
+
+```bash
+node src/cli.mjs
+```
+
+`npm run run:mock` でも同じMock実行ができます。
+
+### Testing
+
+```bash
+node --test
+node --check public/app.js
+node src/cli.mjs
+```
+
+確認ポイント:
+
+- 既存テストが通ること
+- フロントの構文が壊れていないこと
+- Mock実行でBrief、設計書候補、Sources情報が返ること
+
+### Current Scope
+
+現時点では、Mock/無料ローカル解析、有料AIゲート、UI/API/CLI、Step3の外部収集入口、Step4のDaily Proposal OS UIまでを実装しています。
+
+### Next
+
+次の優先テーマは以下です。
+
+- 実データ収集の安定化
+- ローカル保存
+- 差分管理
+- Slack通知
+- Notion保存
+
+次の拡張候補は、収集結果のローカル永続化、RSS対象の調整、Step4以降のAI分析強化、Notion/Slack保存です。
