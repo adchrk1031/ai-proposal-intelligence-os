@@ -32,6 +32,39 @@ const ACTION_LABELS = {
   social: "SNS投稿化済み"
 };
 
+const ACTION_DEFS = {
+  slack: {
+    label: "Slack共有文にする",
+    message: "Slack共有文をコピーしました",
+    buildText: (item) => buildSlackText(item)
+  },
+  notion: {
+    label: "Notion保存",
+    message: "Notion保存用の下書きをコピーしました",
+    buildText: (item) => buildProposalText(item)
+  },
+  poc: {
+    label: "PoC案にする",
+    message: "PoC案の下書きをコピーしました",
+    buildText: (item) => buildPocText(item)
+  },
+  doc: {
+    label: "設計書候補にする",
+    message: "設計書候補メモをコピーしました",
+    buildText: (item) => buildProposalText(item)
+  },
+  social: {
+    label: "SNS投稿ネタにする",
+    message: "SNS投稿ネタをコピーしました",
+    buildText: (item) => buildSocialText(item)
+  },
+  article: {
+    label: "元記事を開く",
+    message: "",
+    buildText: () => ""
+  }
+};
+
 const state = {
   activeView: "today",
   activeFilter: "all",
@@ -47,7 +80,7 @@ const state = {
 
 const viewTitles = {
   today: "今日のAI提案ネタ",
-  timeline: "Brief Timeline",
+  timeline: "履歴",
   ideas: "提案ネタ",
   docs: "設計書候補",
   sources: "収集状況"
@@ -150,20 +183,27 @@ function sourceKindLabel(itemOrSource) {
 }
 
 function sourceStatusLabel(status) {
-  if (status === "ok" || status === "mock") return "success";
-  if (status === "error") return "failed";
-  if (status === "fallback") return "skipped";
+  if (status === "ok" || status === "mock") return "成功";
+  if (status === "error") return "失敗";
+  if (status === "fallback") return "スキップ";
   return status;
 }
 
+function sourceStatusClass(status) {
+  if (status === "成功") return "success";
+  if (status === "失敗") return "failed";
+  if (status === "スキップ") return "skipped";
+  return "neutral";
+}
+
 function sourceCostType(source) {
-  return source.sourceType === "mock" ? "Mock表示" : "無料/公開";
+  return source.sourceType === "mock" ? "テスト表示" : "無料/公開";
 }
 
 function sourceNote(source) {
-  if (source.status === "error") return "取得に失敗。Mock表示で続行しています。";
-  if (source.status === "mock") return "外部通信なしで画面確認するための安全なMockデータです。";
-  if (source.status === "fallback") return "公開ソースが空のためMock表示に切り替えました。";
+  if (source.status === "error") return "取得に失敗しましたが、画面表示は継続しています。";
+  if (source.status === "mock") return "外部通信なしで確認できるテストデータです。";
+  if (source.status === "fallback") return "公開ソースが空のためテストデータへ切り替えました。";
   return "公開ソースから取得できています。";
 }
 
@@ -183,7 +223,7 @@ function shortDate(dateLike = new Date()) {
 }
 
 function shortTime(dateLike) {
-  if (!dateLike) return "not yet";
+  if (!dateLike) return "未実行";
   return new Date(dateLike).toLocaleString("ja-JP", {
     month: "2-digit",
     day: "2-digit",
@@ -196,6 +236,28 @@ function priorityLabel(rank) {
   if (rank === "S") return "最優先";
   if (rank === "A") return "重要";
   if (rank === "B") return "検証";
+  return "参考";
+}
+
+function impactLevel(score, rank) {
+  const normalized = Math.round(Math.max(1, Math.min(10, score / 10)));
+  if (rank === "S") return Math.max(8, normalized);
+  if (rank === "A") return Math.max(6, normalized);
+  if (rank === "B") return Math.max(4, Math.min(7, normalized));
+  return Math.max(2, Math.min(5, normalized));
+}
+
+function impactTone(level) {
+  if (level >= 9) return "strong";
+  if (level >= 7) return "high";
+  if (level >= 5) return "medium";
+  return "low";
+}
+
+function impactLabel(level) {
+  if (level >= 9) return "大きな変化";
+  if (level >= 7) return "注目";
+  if (level >= 5) return "確認推奨";
   return "参考";
 }
 
@@ -266,7 +328,8 @@ function rankItemsForToday(result) {
     return {
       ...item,
       priorityScore: priority.score,
-      priorityReasons: priority.reasons
+      priorityReasons: priority.reasons,
+      impactLevel: impactLevel(priority.score, item.rank)
     };
   });
 
@@ -292,6 +355,30 @@ function rankItemsForToday(result) {
 
 function topItems(limit = 3) {
   return (state.rankedItems || []).slice(0, limit);
+}
+
+function itemSnapshotSignature(item) {
+  return [
+    item.id,
+    item.rank,
+    itemTitle(item),
+    shortDescription(item),
+    item.nextAction || "",
+    (item.businessUseCases || []).join("|"),
+    (item.pocIdeas || []).join("|")
+  ].join("::");
+}
+
+function buildItemSnapshot(item) {
+  return {
+    id: item.id,
+    rank: item.rank,
+    title: itemTitle(item),
+    sourceName: item.sourceName,
+    sourceKind: sourceKindLabel(item),
+    impactLevel: item.impactLevel,
+    signature: itemSnapshotSignature(item)
+  };
 }
 
 function summaryCounts(result) {
@@ -425,14 +512,19 @@ function actionStatusBadges(itemId) {
 }
 
 function buildBriefSnapshot(result) {
+  const highlights = topItems(3).map((item) => capabilityTitle(item));
   return {
     savedAt: new Date().toISOString(),
     finishedAt: result.finishedAt,
     itemIds: result.items.map((item) => item.id),
+    items: state.rankedItems.map(buildItemSnapshot),
     counts: summaryCounts(result),
+    highlights,
+    leadTitle: highlights[0] || "AI情報を提案に変換しました",
     sourceReports: (result.collection?.sourceReports || []).map((source) => ({
       sourceId: source.sourceId,
       sourceName: source.sourceName,
+      sourceKind: sourceKindLabel(source),
       status: source.status,
       itemCount: source.itemCount,
       checkedAt: source.checkedAt,
@@ -457,8 +549,18 @@ function previousSnapshot() {
 function updatedCountFromPrevious() {
   const prev = previousSnapshot();
   if (!prev) return 0;
-  const currentIds = new Set((state.result?.items || []).map((item) => item.id));
-  return prev.itemIds.filter((id) => currentIds.has(id)).length;
+  const prevMap = new Map((prev.items || []).map((item) => [item.id, item]));
+  return (state.rankedItems || []).filter((item) => {
+    const prevItem = prevMap.get(item.id);
+    return prevItem && prevItem.signature !== itemSnapshotSignature(item);
+  }).length;
+}
+
+function newCountFromPrevious() {
+  const prev = previousSnapshot();
+  if (!prev) return state.rankedItems.length;
+  const prevIds = new Set((prev.items || []).map((item) => item.id));
+  return (state.rankedItems || []).filter((item) => !prevIds.has(item.id)).length;
 }
 
 function buildSourceAnalytics() {
@@ -496,6 +598,49 @@ function actionSummaryCounts() {
   };
 }
 
+function actionSummaryForDate(dateKey) {
+  const values = Object.entries(state.actionHistory)
+    .filter(([key]) => key.startsWith(dateKey))
+    .map(([, value]) => value);
+
+  return {
+    proposalized: values.filter((entry) => entry.poc || entry.doc).length,
+    slackShared: values.filter((entry) => entry.slack).length,
+    notionSaved: values.filter((entry) => entry.notion).length
+  };
+}
+
+function compareSnapshots(current, previous) {
+  if (!current) return { newCount: 0, updatedCount: 0, existingCount: 0 };
+  if (!previous) {
+    return {
+      newCount: current.items?.length || 0,
+      updatedCount: 0,
+      existingCount: 0
+    };
+  }
+
+  const prevMap = new Map((previous.items || []).map((item) => [item.id, item]));
+  let newCount = 0;
+  let updatedCount = 0;
+  let existingCount = 0;
+
+  for (const item of current.items || []) {
+    const prevItem = prevMap.get(item.id);
+    if (!prevItem) {
+      newCount += 1;
+      continue;
+    }
+    if (prevItem.signature !== item.signature) {
+      updatedCount += 1;
+      continue;
+    }
+    existingCount += 1;
+  }
+
+  return { newCount, updatedCount, existingCount };
+}
+
 function buildTimelineModel() {
   const history = state.briefHistory;
   const now = new Date(state.result?.finishedAt || Date.now());
@@ -510,13 +655,26 @@ function buildTimelineModel() {
   const yesterdayEntries = history.filter((entry) => (entry.finishedAt || "").slice(0, 10) === yesterdayKey);
   const weekEntries = history.filter((entry) => new Date(entry.finishedAt) >= startOfWeek);
   const actionCounts = actionSummaryCounts();
+  const currentSnapshot = history[0];
+  const diff = compareSnapshots(currentSnapshot, history[1]);
+  const recentEntries = history.slice(0, 5).map((entry, index) => {
+    const prev = history[index + 1];
+    const comparison = compareSnapshots(entry, prev);
+    const dateKey = (entry.finishedAt || "").slice(0, 10);
+    const actions = actionSummaryForDate(dateKey);
+    return {
+      ...entry,
+      comparison,
+      actions
+    };
+  });
 
   return {
     periods: [
       {
         label: "今日",
         count: todayEntries.length || 1,
-        note: `${summaryCounts(state.result).newItems}件の新規ネタ`
+        note: `${diff.newCount}件の新規ネタ`
       },
       {
         label: "昨日",
@@ -531,13 +689,53 @@ function buildTimelineModel() {
     ],
     statuses: [
       { label: "保存済みBrief", value: history.length },
-      { label: "新規ネタ", value: summaryCounts(state.result).newItems },
-      { label: "更新されたネタ", value: updatedCountFromPrevious() },
+      { label: "新規ネタ", value: diff.newCount },
+      { label: "更新されたネタ", value: diff.updatedCount },
       { label: "提案化済み", value: actionCounts.proposalized },
       { label: "Slack共有済み", value: actionCounts.slackShared },
       { label: "Notion保存済み", value: actionCounts.notionSaved }
-    ]
+    ],
+    entries: recentEntries
   };
+}
+
+function buildSourceKindSummary(reports) {
+  const summary = new Map();
+  for (const source of reports) {
+    const key = source.sourceKind || sourceKindLabel(source);
+    const current = summary.get(key) || { label: key, sourceCount: 0, itemCount: 0 };
+    current.sourceCount += 1;
+    current.itemCount += source.itemCount || 0;
+    summary.set(key, current);
+  }
+  return [...summary.values()];
+}
+
+function actionPriorityGroups(item) {
+  const order = [];
+  if (isSalesReady(item)) order.push("slack");
+  if (item.pocIdeas?.length) order.push("poc");
+  if (state.result.designDocCandidates.some((candidate) => candidate.itemId === item.id)) order.push("doc");
+  if ((item.businessUseCases?.length || 0) >= 2) order.push("notion");
+  order.push("social", "article");
+
+  const deduped = [...new Set(order)];
+  return {
+    primary: deduped.slice(0, 3),
+    secondary: deduped.slice(3)
+  };
+}
+
+function heroCapabilities() {
+  return topItems(3).map((item) => capabilityTitle(item));
+}
+
+function heroUseCases() {
+  return topItems(3).map((item) => {
+    const target = item.targetCompanies?.[0] || "社内DXチーム";
+    const useCase = item.businessUseCases?.[0] || "業務改善";
+    return `${target}で ${useCase} に使える`;
+  });
 }
 
 function hydrateRankedItems() {
@@ -595,8 +793,8 @@ function renderEmpty() {
   contentEl.innerHTML = `
     <div class="state-card">
       <strong>まだBriefはありません</strong>
-      <p>Runを押すと、今日のAI提案ネタをまとめて表示します。</p>
-      <button class="secondary-button" type="button" data-action="retry">Run</button>
+      <p>AI収集を実行すると、今日のAI提案ネタをまとめて表示します。</p>
+      <button class="secondary-button" type="button" data-action="retry">AI収集を実行</button>
     </div>
   `;
 }
@@ -631,16 +829,21 @@ function renderPriorityReasons(item) {
   return `
     <div class="reason-row">
       ${(item.priorityReasons || [])
-        .slice(0, 4)
+        .slice(0, 3)
         .map((reason) => `<span class="reason-pill">${escapeHtml(reason)}</span>`)
         .join("")}
     </div>
   `;
 }
 
+function useCaseTags(item) {
+  return (item.businessUseCases || []).slice(0, 3);
+}
+
 function renderDetailSections(item) {
   const doc = state.result.designDocCandidates.find((candidate) => candidate.itemId === item.id);
   const actionStatuses = actionStatusBadges(item.id);
+  const actionGroups = actionPriorityGroups(item);
 
   return `
     <div class="detail-layout">
@@ -685,9 +888,9 @@ function renderDetailSections(item) {
       <aside class="action-panel">
         <div class="action-panel-head">
           <strong>次のアクション</strong>
-          <span>${escapeHtml(`${item.priorityScore}pt`)}</span>
+          <span>注目度 ${escapeHtml(String(item.impactLevel || impactLevel(item.priorityScore, item.rank)))}/10</span>
         </div>
-        <p>共有や提案化にそのまま進めます。</p>
+        <p>${escapeHtml(impactLabel(item.impactLevel || impactLevel(item.priorityScore, item.rank)))}。まずやると効果が高い順だけを上に出しています。</p>
         <div class="action-status-row">
           ${
             actionStatuses.length
@@ -696,12 +899,43 @@ function renderDetailSections(item) {
           }
         </div>
         <div class="action-stack">
-          <button class="secondary-button small-button" type="button" data-ui-action="slack" data-item-id="${escapeHtml(item.id)}">Slack共有文にする</button>
-          <button class="secondary-button small-button" type="button" data-ui-action="notion" data-item-id="${escapeHtml(item.id)}">Notion保存</button>
-          <button class="secondary-button small-button" type="button" data-ui-action="poc" data-item-id="${escapeHtml(item.id)}">PoC案にする</button>
-          <button class="secondary-button small-button" type="button" data-ui-action="doc" data-item-id="${escapeHtml(item.id)}">設計書候補にする</button>
-          <button class="secondary-button small-button" type="button" data-ui-action="social" data-item-id="${escapeHtml(item.id)}">SNS投稿ネタにする</button>
-          <button class="secondary-button small-button" type="button" data-ui-action="article" data-item-id="${escapeHtml(item.id)}">元記事を開く</button>
+          ${actionGroups.primary
+            .map(
+              (action) => `
+                <button class="secondary-button small-button action-button action-button-primary" type="button" data-ui-action="${escapeHtml(action)}" data-item-id="${escapeHtml(item.id)}">
+                  ${escapeHtml(ACTION_DEFS[action].label)}
+                </button>
+              `
+            )
+            .join("")}
+        </div>
+        ${
+          actionGroups.secondary.length
+            ? `
+              <div class="action-secondary">
+                <span>その他</span>
+                <div class="action-stack compact">
+                  ${actionGroups.secondary
+                    .map(
+                      (action) => `
+                        <button class="secondary-button small-button" type="button" data-ui-action="${escapeHtml(action)}" data-item-id="${escapeHtml(item.id)}">
+                          ${escapeHtml(ACTION_DEFS[action].label)}
+                        </button>
+                      `
+                    )
+                    .join("")}
+                </div>
+              </div>
+            `
+            : ""
+        }
+        <div class="action-explain">
+          <span>このネタでできること</span>
+          <ul>
+            <li>${escapeHtml(capabilityTitle(item))}</li>
+            <li>${escapeHtml(departmentAndUse(item))}</li>
+            <li>${escapeHtml(item.nextAction || item.pocIdeas?.[0] || "PoC対象を1つ決める")}</li>
+          </ul>
         </div>
       </aside>
     </div>
@@ -716,14 +950,21 @@ function renderBriefCard(item) {
           <span class="rank-badge">${escapeHtml(item.rank)}</span>
           <span class="priority-label">${escapeHtml(priorityLabel(item.rank))}</span>
         </div>
-        <span class="source-pill">${escapeHtml(sourceKindLabel(item))}</span>
+        <div class="brief-top-right">
+          <span class="impact-pill tone-${escapeHtml(impactTone(item.impactLevel))}">注目度 ${escapeHtml(String(item.impactLevel))}/10</span>
+          <span class="source-pill">${escapeHtml(sourceKindLabel(item))}</span>
+        </div>
       </div>
-      <h4>${escapeHtml(capabilityTitle(item))}</h4>
+      <h4 class="brief-card-title">${escapeHtml(capabilityTitle(item))}</h4>
       <p class="brief-summary">${escapeHtml(shortDescription(item))}</p>
-      ${renderPriorityReasons(item)}
+      <div class="brief-chip-row">
+        ${useCaseTags(item)
+          .map((useCase) => `<span class="reason-pill muted-tag">${escapeHtml(useCase)}</span>`)
+          .join("")}
+      </div>
       <div class="brief-meta-grid">
         <div>
-          <span>使えそうな部署・用途</span>
+          <span>用途</span>
           <p>${escapeHtml(departmentAndUse(item))}</p>
         </div>
         <div>
@@ -732,9 +973,10 @@ function renderBriefCard(item) {
         </div>
         <div>
           <span>情報源</span>
-          <p>${escapeHtml(`${item.sourceName} / ${itemSubtitle(item)}`)}</p>
+          <p>${escapeHtml(item.sourceName)}</p>
         </div>
       </div>
+      ${renderPriorityReasons(item)}
       <details class="brief-details">
         <summary>詳細を見る</summary>
         ${renderDetailSections(item)}
@@ -753,7 +995,7 @@ function renderMiniDocCard(doc) {
       <p><strong>次の一手</strong>${escapeHtml(item?.nextAction || "PoC要件を整理する")}</p>
       <div class="mini-actions">
         <button class="secondary-button small-button" type="button" data-copy="${escapeHtml(buildDesignDocText(doc))}" data-copy-message="設計書候補をコピーしました">下書きをコピー</button>
-        <button class="secondary-button small-button" type="button" data-view-link="docs">一覧で見る</button>
+        <button class="secondary-button small-button" type="button" data-view-link="docs">一覧を見る</button>
       </div>
     </article>
   `;
@@ -771,9 +1013,9 @@ function renderLogPanel() {
         ${analytics
           .map(
             (source) => `
-              <article class="log-row ${escapeHtml(source.displayStatus)}">
+              <article class="log-row ${escapeHtml(sourceStatusClass(source.displayStatus))}">
                 <div>
-                  <strong>${escapeHtml(source.sourceName)}</strong>
+                  <strong>${escapeHtml(source.sourceName === "Mock Seed" ? "Mockデータ" : source.sourceName)}</strong>
                   <p>${escapeHtml(sourceNote(source))}</p>
                 </div>
                 <div class="log-metrics">
@@ -794,11 +1036,13 @@ function renderToday() {
   const counts = summaryCounts(state.result);
   const filteredItems = filterItems();
   const lead = topItems(1)[0];
+  const capabilities = heroCapabilities();
+  const uses = heroUseCases();
 
   return `
     <section class="hero-section">
       <div class="hero-copy">
-        <p class="eyebrow">Daily Brief</p>
+        <p class="eyebrow">今日のブリーフ</p>
         <h3>今日のAI提案ネタ</h3>
         <p class="hero-text">
           ${escapeHtml(
@@ -807,11 +1051,25 @@ function renderToday() {
               : "今日のAI情報を提案に使える形へ整理します。"
           )}
         </p>
+        <div class="hero-grid">
+          <article class="hero-mini-card">
+            <span>できるようになったこと</span>
+            <ul>
+              ${capabilities.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+            </ul>
+          </article>
+          <article class="hero-mini-card">
+            <span>このページで活かせること</span>
+            <ul>
+              ${uses.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+            </ul>
+          </article>
+        </div>
       </div>
       <div class="hero-actions">
-        <span class="status-pill">Mode: <strong>${escapeHtml(state.config?.appMode || "mock")}</strong></span>
+        <span class="status-pill">モード: <strong>${escapeHtml(state.config?.appMode || "mock")}</strong></span>
         <span class="status-pill">推定コスト: <strong>${escapeHtml(estimateCost(state.config, state.result))}</strong></span>
-        <button class="primary-button" type="button" data-action="retry">Run</button>
+        <button class="primary-button" type="button" data-action="retry">AI収集を実行</button>
       </div>
     </section>
 
@@ -826,9 +1084,9 @@ function renderToday() {
       <div class="section-kicker">
         <div>
           <h3>Briefカード</h3>
-          <span>ニュース一覧ではなく、今日やる価値順に整理</span>
+          <span>今日やる価値順に、提案に使える単位で整理しています</span>
         </div>
-        <button class="text-button" type="button" data-copy-daily="true">Daily Briefをコピー</button>
+        <button class="text-button" type="button" data-copy-daily="true">今日のブリーフをコピー</button>
       </div>
       ${renderFilterBar()}
       <div class="brief-card-list">
@@ -870,11 +1128,12 @@ function renderToday() {
 
 function renderTimeline() {
   const model = buildTimelineModel();
+  const pendingStatuses = new Set(["Slack共有済み", "Notion保存済み"]);
   return `
     <section class="brief-section">
       <div class="section-kicker">
-        <h3>Timeline</h3>
-        <span>ローカル保存を見越した進捗ビュー</span>
+        <h3>履歴</h3>
+        <span>差分管理や共有履歴の入口です</span>
       </div>
       <div class="timeline-period-grid">
         ${model.periods
@@ -893,28 +1152,40 @@ function renderTimeline() {
         ${model.statuses
           .map(
             (status) => `
-              <article class="timeline-status-card">
+              <article class="timeline-status-card ${pendingStatuses.has(status.label) ? "pending" : ""}">
                 <span>${escapeHtml(status.label)}</span>
                 <strong>${escapeHtml(String(status.value))}</strong>
+                <p>${pendingStatuses.has(status.label) ? "今後対応" : "確認できます"}</p>
               </article>
             `
           )
           .join("")}
       </div>
       <div class="timeline-day-list">
-        <article class="timeline-day-card">
-          <div>
-            <time>${escapeHtml(shortDate(state.result.finishedAt))}</time>
-            <h4>${escapeHtml(topItems(1)[0]?.whatBecamePossible?.[0] || "AI情報を提案に変換しました")}</h4>
-            <p>${escapeHtml(shortDescription(topItems(1)[0] || {}))}</p>
-          </div>
-          <div class="timeline-metrics">
-            <span><strong>${summaryCounts(state.result).important}</strong>重要</span>
-            <span><strong>${summaryCounts(state.result).poc}</strong>PoC候補</span>
-            <span><strong>${summaryCounts(state.result).docs}</strong>設計書候補</span>
-          </div>
-          <button class="secondary-button small-button" type="button" data-view-link="today">Briefへ戻る</button>
-        </article>
+        ${model.entries
+          .map(
+            (entry, index) => `
+              <article class="timeline-day-card">
+                <div>
+                  <time>${escapeHtml(shortDate(entry.finishedAt || entry.savedAt))}</time>
+                  <h4>${escapeHtml(entry.leadTitle || entry.highlights?.[0] || "AI情報を提案に変換しました")}</h4>
+                  <p>${escapeHtml(
+                    entry.highlights?.slice(0, 2).join(" / ") || "今日使えるネタを提案・PoC候補へ整理しています。"
+                  )}</p>
+                </div>
+                <div class="timeline-metrics">
+                  <span><strong>${escapeHtml(String(entry.comparison?.newCount || entry.counts?.newItems || 0))}</strong>新規</span>
+                  <span><strong>${escapeHtml(String(entry.comparison?.updatedCount || 0))}</strong>更新</span>
+                  <span><strong>${escapeHtml(String(entry.actions?.proposalized || 0))}</strong>提案化</span>
+                  <span><strong>${escapeHtml(String(entry.actions?.slackShared || 0))}</strong>共有</span>
+                </div>
+                <button class="secondary-button small-button" type="button" data-view-link="${escapeHtml(index === 0 ? "today" : "timeline")}">
+                  ${escapeHtml(index === 0 ? "今日を見る" : "履歴を見る")}
+                </button>
+              </article>
+            `
+          )
+          .join("")}
       </div>
     </section>
   `;
@@ -925,7 +1196,7 @@ function renderIdeas() {
     <section class="brief-section">
       <div class="section-kicker">
         <h3>提案ネタ</h3>
-        <span>社内説明や営業初稿に使える内容だけを整理</span>
+        <span>社内提案・営業資料・PoC企画に使える候補を整理しています</span>
       </div>
       <div class="idea-grid">
         ${state.rankedItems
@@ -937,11 +1208,15 @@ function renderIdeas() {
                   <span class="source-pill">${escapeHtml(sourceKindLabel(item))}</span>
                 </div>
                 <h4>${escapeHtml(proposalTitle(item))}</h4>
-                ${renderPriorityReasons(item)}
                 <div class="idea-fields">
                   <p><strong>対象</strong>${escapeHtml(item.targetCompanies?.slice(0, 2).join(" / ") || "社内DXチーム")}</p>
                   <p><strong>解決課題</strong>${escapeHtml(item.problemToSolve || item.businessUseCases?.[0] || "業務改善")}</p>
                   <p><strong>期待効果</strong>${escapeHtml(expectedEffect(item))}</p>
+                </div>
+                <div class="brief-chip-row compact">
+                  ${useCaseTags(item)
+                    .map((useCase) => `<span class="reason-pill muted-tag">${escapeHtml(useCase)}</span>`)
+                    .join("")}
                 </div>
               </article>
             `
@@ -988,7 +1263,7 @@ function renderDocs() {
     <section class="brief-section">
       <div class="section-kicker">
         <h3>設計書候補</h3>
-        <span>PoCへつなげるための下書き候補</span>
+        <span>PoC化しやすいテーマを、設計書の下書き候補として整理しています</span>
       </div>
       <div class="doc-grid">${state.result.designDocCandidates.map(renderDocCard).join("")}</div>
     </section>
@@ -998,9 +1273,10 @@ function renderDocs() {
 function renderSources() {
   const reports = buildSourceAnalytics();
   const usedFallback = state.result.collection?.usedMockFallback;
-  const successCount = reports.filter((source) => source.displayStatus === "success").length;
-  const failedCount = reports.filter((source) => source.displayStatus === "failed").length;
-  const skippedCount = reports.filter((source) => source.displayStatus === "skipped").length;
+  const successCount = reports.filter((source) => source.displayStatus === "成功").length;
+  const failedCount = reports.filter((source) => source.displayStatus === "失敗").length;
+  const skippedCount = reports.filter((source) => source.displayStatus === "スキップ").length;
+  const sourceKinds = buildSourceKindSummary(reports);
   return `
     <section class="brief-section">
       <div class="section-kicker">
@@ -1008,26 +1284,40 @@ function renderSources() {
         <span>${usedFallback ? "Mock表示で継続" : "公開ソース確認済み"}</span>
       </div>
       <div class="summary-grid compact">
-        ${renderSummaryCard("success", successCount, "取得できたソース")}
-        ${renderSummaryCard("failed", failedCount, "再確認が必要")}
-        ${renderSummaryCard("skipped", skippedCount, "fallbackやスキップ")}
-        ${renderSummaryCard("today cost", estimateCost(state.config, state.result), "有料呼び出し時のみ")}
+        ${renderSummaryCard("成功", successCount, "取得できたソース")}
+        ${renderSummaryCard("失敗", failedCount, "再確認が必要")}
+        ${renderSummaryCard("スキップ", skippedCount, "フォールバックやスキップ")}
+        ${renderSummaryCard("本日の推定コスト", estimateCost(state.config, state.result), "有料呼び出し時のみ")}
+      </div>
+      <div class="source-kind-row">
+        ${sourceKinds
+          .map(
+            (kind) => `
+              <article class="source-kind-card">
+                <span>${escapeHtml(kind.label)}</span>
+                <strong>${escapeHtml(String(kind.sourceCount))}ソース</strong>
+                <p>${escapeHtml(`${kind.itemCount}件を取得`)}</p>
+              </article>
+            `
+          )
+          .join("")}
       </div>
       <div class="source-status-grid">
         ${reports
           .map(
             (source) => `
-              <article class="source-status ${escapeHtml(source.displayStatus)}">
+              <article class="source-status ${escapeHtml(sourceStatusClass(source.displayStatus))}">
                 <div>
                   <span class="status-dot"></span>
-                  <strong>${escapeHtml(source.sourceName)}</strong>
+                  <strong>${escapeHtml(source.sourceName === "Mock Seed" ? "Mockデータ" : source.sourceName)}</strong>
                 </div>
-                <p><strong>status</strong>${escapeHtml(source.displayStatus)}</p>
-                <p><strong>fetched count</strong>${escapeHtml(String(source.itemCount))}</p>
-                <p><strong>last fetched at</strong>${escapeHtml(shortTime(source.checkedAt))}</p>
-                <p><strong>success rate</strong>${escapeHtml(source.successRate)}</p>
-                <p><strong>fallback</strong>${escapeHtml(source.fallbackUsed ? "used" : "no")}</p>
-                <p><strong>error reason</strong>${escapeHtml(source.error || "なし")}</p>
+                <p><strong>種別</strong>${escapeHtml(source.sourceKind || sourceKindLabel(source))}</p>
+                <p><strong>状態</strong>${escapeHtml(source.displayStatus)}</p>
+                <p><strong>取得件数</strong>${escapeHtml(String(source.itemCount))}</p>
+                <p><strong>最終取得</strong>${escapeHtml(shortTime(source.checkedAt))}</p>
+                <p><strong>成功率</strong>${escapeHtml(source.successRate)}</p>
+                <p><strong>フォールバック</strong>${escapeHtml(source.fallbackUsed ? "あり" : "なし")}</p>
+                <p><strong>エラー理由</strong>${escapeHtml(source.error || "問題なし")}</p>
                 <p><strong>直近エラー</strong>${escapeHtml(source.recentError)}</p>
                 <p><strong>費用</strong>${escapeHtml(sourceCostType(source))}</p>
               </article>
@@ -1079,7 +1369,7 @@ async function runPipeline() {
   hideNotice();
   renderActiveView();
   runButton.disabled = true;
-  runButton.textContent = "Running";
+  runButton.textContent = "実行中";
 
   try {
     const response = await fetch("/api/run", { method: "POST" });
@@ -1102,7 +1392,7 @@ async function runPipeline() {
   } finally {
     state.loading = false;
     runButton.disabled = false;
-    runButton.textContent = "Run Intelligence";
+    runButton.textContent = "AI収集を実行";
     renderActiveView();
   }
 }
@@ -1115,40 +1405,17 @@ function copyText(text, message) {
 function handleUiAction(action, itemId) {
   const item = state.priorityMap.get(itemId);
   if (!item) return;
-
-  if (action === "slack") {
-    markActionState(itemId, "slack");
-    copyText(buildSlackText(item), "Slack共有文をコピーしました");
-    renderActiveView();
-    return;
-  }
-  if (action === "notion") {
-    markActionState(itemId, "notion");
-    copyText(buildProposalText(item), "Notion保存用の下書きをコピーしました");
-    renderActiveView();
-    return;
-  }
-  if (action === "poc") {
-    markActionState(itemId, "poc");
-    copyText(buildPocText(item), "PoC案の下書きをコピーしました");
-    renderActiveView();
-    return;
-  }
-  if (action === "doc") {
-    markActionState(itemId, "doc");
-    copyText(buildProposalText(item), "設計書候補メモをコピーしました");
-    renderActiveView();
-    return;
-  }
-  if (action === "social") {
-    markActionState(itemId, "social");
-    copyText(buildSocialText(item), "SNS投稿ネタをコピーしました");
-    renderActiveView();
-    return;
-  }
   if (action === "article") {
     window.open(item.url, "_blank", "noreferrer");
+    return;
   }
+
+  const definition = ACTION_DEFS[action];
+  if (!definition) return;
+
+  markActionState(itemId, action);
+  copyText(definition.buildText(item), definition.message);
+  renderActiveView();
 }
 
 navItems.forEach((item) => {
@@ -1175,7 +1442,7 @@ contentEl.addEventListener("click", (event) => {
     copyText(copyButton.dataset.copy, copyButton.dataset.copyMessage || "コピーしました");
   }
   if (dailyCopy) {
-    copyText(buildDailyBriefText(), "Daily Briefをコピーしました");
+    copyText(buildDailyBriefText(), "今日のブリーフをコピーしました");
   }
   if (filterButton) {
     state.activeFilter = filterButton.dataset.filter;

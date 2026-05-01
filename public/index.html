@@ -12,38 +12,39 @@
         <div class="brand">
           <span class="brand-mark">AI</span>
           <div>
-            <p class="eyebrow">Proposal Brief</p>
+            <p class="eyebrow">AI Proposal Intelligence OS</p>
             <h1>AI Proposal OS</h1>
           </div>
         </div>
 
         <nav class="nav" aria-label="views">
-          <button class="nav-item active" type="button" data-view="today">Today</button>
-          <button class="nav-item" type="button" data-view="timeline">Timeline</button>
-          <button class="nav-item" type="button" data-view="ideas">Ideas</button>
-          <button class="nav-item" type="button" data-view="docs">Design Docs</button>
-          <button class="nav-item" type="button" data-view="sources">Sources</button>
+          <button class="nav-item active" type="button" data-view="today">今日</button>
+          <button class="nav-item" type="button" data-view="timeline">履歴</button>
+          <button class="nav-item" type="button" data-view="ideas">提案ネタ</button>
+          <button class="nav-item" type="button" data-view="docs">設計書候補</button>
+          <button class="nav-item" type="button" data-view="sources">収集状況</button>
         </nav>
 
         <section class="mode-card" aria-label="runtime status">
+          <p class="mode-title">システム状態</p>
           <div class="mode-row">
-            <span>APP_MODE</span>
+            <span>アプリモード</span>
             <strong id="mode">loading</strong>
           </div>
           <div class="mode-row">
-            <span>AI_PROVIDER</span>
+            <span>AIプロバイダー</span>
             <strong id="provider">loading</strong>
           </div>
           <div class="mode-row">
-            <span>PAID_AI_ENABLED</span>
+            <span>有料AI利用</span>
             <strong id="paidAi">loading</strong>
           </div>
           <div class="mode-row">
-            <span>Today Cost</span>
+            <span>本日の推定コスト</span>
             <strong id="cost">loading</strong>
           </div>
           <div class="mode-row">
-            <span>Last run</span>
+            <span>最終実行</span>
             <strong id="lastRunSide">not yet</strong>
           </div>
         </section>
@@ -52,17 +53,17 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <p class="eyebrow" id="todayDate">Today</p>
+            <p class="eyebrow" id="todayDate">今日</p>
             <h2 id="viewTitle">AI Proposal Intelligence OS</h2>
           </div>
           <div class="topbar-actions">
-            <span class="status-pill">Mode: <strong id="modeTop">loading</strong></span>
+            <span class="status-pill">モード: <strong id="modeTop">loading</strong></span>
             <span class="status-pill">推定コスト: <strong id="costTop">loading</strong></span>
-            <button id="runButton" class="primary-button" type="button">Run Intelligence</button>
+            <button id="runButton" class="primary-button" type="button">AI収集を実行</button>
           </div>
         </header>
         <div class="run-meta">
-          <span id="timestamp">Not run yet</span>
+          <span id="timestamp">まだ実行していません</span>
         </div>
 
         <section id="notice" class="notice hidden" aria-live="polite"></section>
