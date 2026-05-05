@@ -748,7 +748,7 @@ function heroUseCases() {
 
 function todayLeadMessage(lead) {
   if (!lead) return "今日使えるAI活用ネタを、提案・PoC・設計書候補まで整理します。";
-  return `${capabilityTitle(lead)}。今日まず動くべき1件を起点に、提案・PoC・設計書候補まで判断できます。`;
+  return `${capabilityTitle(lead)}。今日まず見るべき1件です。`;
 }
 
 function sourceHealthSummary(reports) {
@@ -759,6 +759,35 @@ function sourceHealthSummary(reports) {
   if (failedCount > 0) return `${failedCount}件で再確認が必要です`;
   if (skippedCount > 0) return `${successCount}件成功、${skippedCount}件は補助表示です`;
   return `${successCount}件すべて問題なく確認できています`;
+}
+
+function renderCompactTodayRow(item) {
+  return `
+    <article class="today-row priority-${escapeHtml(item.rank.toLowerCase())}">
+      <div class="today-row-main">
+        <div class="today-row-head">
+          <span class="rank-badge small">${escapeHtml(item.rank)}</span>
+          <span class="source-pill">${escapeHtml(sourceKindLabel(item))}</span>
+          <span class="impact-pill tone-${escapeHtml(impactTone(item.impactLevel))}">注目度 ${escapeHtml(String(item.impactLevel))}/10</span>
+        </div>
+        <h4>${escapeHtml(capabilityTitle(item))}</h4>
+        <p>${escapeHtml(shortDescription(item))}</p>
+      </div>
+      <div class="today-row-side">
+        <span>${escapeHtml(item.nextAction || item.pocIdeas?.[0] || "PoC対象を決める")}</span>
+        <button class="secondary-button small-button" type="button" data-view-link="ideas">詳しく見る</button>
+      </div>
+    </article>
+  `;
+}
+
+function progressCards() {
+  const actions = actionSummaryCounts();
+  return [
+    { label: "収集中", value: summaryCounts(state.result).newItems, note: "今日のネタを整理" },
+    { label: "提案化", value: actions.proposalized, note: "PoCや設計書へ展開" },
+    { label: "共有", value: actions.slackShared + actions.notionSaved, note: "SlackやNotionへ反映" }
+  ];
 }
 
 function hydrateRankedItems() {
@@ -1074,30 +1103,22 @@ function renderLogPanel() {
 
 function renderToday() {
   const counts = summaryCounts(state.result);
-  const filteredItems = filterItems();
   const lead = topItems(1)[0];
   const capabilities = heroCapabilities();
-  const uses = heroUseCases();
+  const compactItems = topItems(3);
 
   return `
     <section class="hero-section">
       <div class="hero-copy">
-        <p class="eyebrow">今日のブリーフ</p>
+        <p class="eyebrow">今日の要点</p>
         <h3>今日のAI提案ネタ</h3>
-        <p class="hero-text">
-          ${escapeHtml(todayLeadMessage(lead))}
-        </p>
+        <p class="hero-text">${escapeHtml(todayLeadMessage(lead))}</p>
         <article class="hero-mini-card hero-mini-card-wide">
           <span>できるようになったこと</span>
           <ul>
             ${capabilities.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
           </ul>
         </article>
-      </div>
-      <div class="hero-actions">
-        <span class="status-pill">モード: <strong>${escapeHtml(state.config?.appMode || "mock")}</strong></span>
-        <span class="status-pill">推定コスト: <strong>${escapeHtml(estimateCost(state.config, state.result))}</strong></span>
-        <button class="primary-button" type="button" data-action="retry">AI収集を実行</button>
       </div>
     </section>
 
@@ -1111,46 +1132,40 @@ function renderToday() {
     <section class="brief-section">
       <div class="section-kicker">
         <div>
-          <h3>Briefカード</h3>
-          <span>今日やる価値順に、提案に使える単位で整理しています</span>
+          <h3>進捗状況</h3>
+          <span>今日どこまで進めたかだけを表示します</span>
         </div>
-        <button class="text-button" type="button" data-copy-daily="true">今日のブリーフをコピー</button>
       </div>
-      ${renderFilterBar()}
-      <div class="brief-card-list">
-        ${
-          filteredItems.length
-            ? filteredItems.map(renderBriefCard).join("")
-            : '<div class="empty-inline">この条件に合うBriefカードはありません。</div>'
-        }
+      <div class="timeline-status-row compact-progress">
+        ${progressCards()
+          .map(
+            (status) => `
+              <article class="timeline-status-card">
+                <span>${escapeHtml(status.label)}</span>
+                <strong>${escapeHtml(String(status.value))}</strong>
+                <p>${escapeHtml(status.note)}</p>
+              </article>
+            `
+          )
+          .join("")}
       </div>
     </section>
 
-    <section class="split-grid">
-      <section class="brief-section">
-        <div class="section-kicker">
-          <h3>次にやること</h3>
-          <span>3日以内に動ける粒度だけ表示</span>
+    <section class="brief-section">
+      <div class="section-kicker">
+        <div>
+          <h3>今日見る3件</h3>
+          <span>詳細は提案ネタで確認できます</span>
         </div>
-        <ul class="todo-list">
-          ${topItems(3)
-            .map((item) => `<li>${escapeHtml(item.nextAction || item.pocIdeas?.[0] || "PoC対象を決める")}</li>`)
-            .join("")}
-        </ul>
-      </section>
-
-      <section class="brief-section">
-        <div class="section-kicker">
-          <h3>設計書候補</h3>
-          <span>PoCへすぐつなげる候補</span>
+        <div class="today-actions">
+          <button class="text-button" type="button" data-copy-daily="true">今日のブリーフをコピー</button>
+          <button class="secondary-button small-button" type="button" data-view-link="ideas">提案ネタを開く</button>
         </div>
-        <div class="mini-doc-list">
-          ${state.result.designDocCandidates.slice(0, 2).map(renderMiniDocCard).join("")}
-        </div>
-      </section>
+      </div>
+      <div class="today-row-list">
+        ${compactItems.map(renderCompactTodayRow).join("")}
+      </div>
     </section>
-
-    ${renderLogPanel()}
   `;
 }
 
@@ -1239,27 +1254,26 @@ function renderIdeas() {
     <section class="brief-section">
       <div class="section-kicker">
         <h3>提案ネタ</h3>
-        <span>社内提案・営業資料・PoC企画に使える候補を整理しています</span>
+        <span>提案やPoCに進めやすい候補だけを短く並べています</span>
       </div>
       <div class="idea-grid">
         ${state.rankedItems
           .map(
             (item) => `
               <article class="idea-card">
-                <div class="brief-card-top">
+                <div class="idea-card-head">
                   <span class="rank-badge small">${escapeHtml(item.rank)}</span>
-                  <span class="source-pill">${escapeHtml(sourceKindLabel(item))}</span>
+                  <span class="impact-pill tone-${escapeHtml(impactTone(item.impactLevel))}">注目度 ${escapeHtml(String(item.impactLevel))}/10</span>
                 </div>
                 <h4>${escapeHtml(proposalTitle(item))}</h4>
-                <div class="idea-fields">
-                  <p><strong>対象</strong>${escapeHtml(item.targetCompanies?.slice(0, 2).join(" / ") || "社内DXチーム")}</p>
-                  <p><strong>解決課題</strong>${escapeHtml(item.problemToSolve || item.businessUseCases?.[0] || "業務改善")}</p>
-                  <p><strong>期待効果</strong>${escapeHtml(expectedEffect(item))}</p>
+                <p class="idea-summary">${escapeHtml(item.problemToSolve || item.businessUseCases?.[0] || "業務改善")}</p>
+                <div class="idea-inline-meta">
+                  <span>${escapeHtml(item.targetCompanies?.[0] || "社内DXチーム")}</span>
+                  <span>${escapeHtml(item.nextAction || item.pocIdeas?.[0] || "PoC対象を決める")}</span>
                 </div>
-                <div class="brief-chip-row compact">
-                  ${useCaseTags(item)
-                    .map((useCase) => `<span class="reason-pill muted-tag">${escapeHtml(useCase)}</span>`)
-                    .join("")}
+                <div class="mini-actions">
+                  <button class="secondary-button small-button" type="button" data-ui-action="poc" data-item-id="${escapeHtml(item.id)}">PoC案にする</button>
+                  <button class="secondary-button small-button" type="button" data-ui-action="slack" data-item-id="${escapeHtml(item.id)}">共有する</button>
                 </div>
               </article>
             `
