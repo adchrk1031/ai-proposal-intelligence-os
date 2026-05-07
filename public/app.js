@@ -69,6 +69,7 @@ const state = {
   activeView: "today",
   activeFilter: "all",
   timelineExpanded: false,
+  ideasExpanded: false,
   config: null,
   result: null,
   loading: true,
@@ -1125,8 +1126,7 @@ function renderToday() {
     <section class="summary-grid">
       ${renderSummaryCard("本日の新着件数", counts.newItems, "今日確認したAI情報")}
       ${renderSummaryCard("重要ネタ件数", counts.important, "S/Aランク中心")}
-      ${renderSummaryCard("PoC候補件数", counts.poc, "小さく試せるテーマ")}
-      ${renderSummaryCard("設計書候補件数", counts.docs, "すぐに雛形へ展開")}
+      ${renderSummaryCard("PoC/設計候補", counts.poc + counts.docs, "すぐに試せる候補")}
     </section>
 
     <section class="brief-section">
@@ -1250,6 +1250,8 @@ function renderTimeline() {
 }
 
 function renderIdeas() {
+  const visibleItems = state.ideasExpanded ? state.rankedItems : state.rankedItems.slice(0, 3);
+  const hasMoreItems = state.rankedItems.length > 3;
   return `
     <section class="brief-section">
       <div class="section-kicker">
@@ -1257,7 +1259,7 @@ function renderIdeas() {
         <span>提案やPoCに進めやすい候補だけを短く並べています</span>
       </div>
       <div class="idea-grid">
-        ${state.rankedItems
+        ${visibleItems
           .map(
             (item) => `
               <article class="idea-card">
@@ -1280,6 +1282,17 @@ function renderIdeas() {
           )
           .join("")}
       </div>
+      ${
+        hasMoreItems
+          ? `
+            <div class="timeline-more">
+              <button class="secondary-button small-button" type="button" data-toggle-ideas="true">
+                ${escapeHtml(state.ideasExpanded ? "折りたたむ" : "もっと表示する")}
+              </button>
+            </div>
+          `
+          : ""
+      }
     </section>
   `;
 }
@@ -1377,19 +1390,50 @@ function renderSources() {
           .map(
             (source) => `
               <article class="source-status ${escapeHtml(sourceStatusClass(source.displayStatus))}">
-                <div>
-                  <span class="status-dot"></span>
-                  <strong>${escapeHtml(source.sourceName === "Mock Seed" ? "Mockデータ" : source.sourceName)}</strong>
+                <div class="source-status-head">
+                  <div>
+                    <div>
+                      <span class="status-dot"></span>
+                      <strong>${escapeHtml(source.sourceName === "Mock Seed" ? "Mockデータ" : source.sourceName)}</strong>
+                    </div>
+                    <p class="source-status-note">${escapeHtml(sourceNote(source))}</p>
+                  </div>
+                  <span class="status-pill">${escapeHtml(source.displayStatus)}</span>
                 </div>
-                <p><strong>種別</strong>${escapeHtml(source.sourceKind || sourceKindLabel(source))}</p>
-                <p><strong>状態</strong>${escapeHtml(source.displayStatus)}</p>
-                <p><strong>取得件数</strong>${escapeHtml(String(source.itemCount))}</p>
-                <p><strong>最終取得</strong>${escapeHtml(shortTime(source.checkedAt))}</p>
-                <p><strong>成功率</strong>${escapeHtml(source.successRate)}</p>
-                <p><strong>フォールバック</strong>${escapeHtml(source.fallbackUsed ? "あり" : "なし")}</p>
-                <p><strong>エラー理由</strong>${escapeHtml(source.error || "問題なし")}</p>
-                <p><strong>直近エラー</strong>${escapeHtml(source.recentError)}</p>
-                <p><strong>費用</strong>${escapeHtml(sourceCostType(source))}</p>
+                <div class="source-status-meta">
+                  <div class="source-status-item">
+                    <span>種別</span>
+                    <strong>${escapeHtml(source.sourceKind || sourceKindLabel(source))}</strong>
+                  </div>
+                  <div class="source-status-item">
+                    <span>取得件数</span>
+                    <strong>${escapeHtml(String(source.itemCount))}</strong>
+                  </div>
+                  <div class="source-status-item">
+                    <span>最終取得</span>
+                    <strong>${escapeHtml(shortTime(source.checkedAt))}</strong>
+                  </div>
+                  <div class="source-status-item">
+                    <span>成功率</span>
+                    <strong>${escapeHtml(source.successRate)}</strong>
+                  </div>
+                  <div class="source-status-item">
+                    <span>フォールバック</span>
+                    <strong>${escapeHtml(source.fallbackUsed ? "あり" : "なし")}</strong>
+                  </div>
+                  <div class="source-status-item">
+                    <span>直近エラー</span>
+                    <strong>${escapeHtml(source.recentError)}</strong>
+                  </div>
+                  <div class="source-status-item">
+                    <span>エラー理由</span>
+                    <strong>${escapeHtml(source.error || "問題なし")}</strong>
+                  </div>
+                  <div class="source-status-item">
+                    <span>費用</span>
+                    <strong>${escapeHtml(sourceCostType(source))}</strong>
+                  </div>
+                </div>
               </article>
             `
           )
@@ -1499,6 +1543,7 @@ contentEl.addEventListener("click", (event) => {
   const retry = event.target.closest("[data-action='retry']");
   const viewLink = event.target.closest("[data-view-link]");
   const timelineToggle = event.target.closest("[data-toggle-timeline]");
+  const ideasToggle = event.target.closest("[data-toggle-ideas]");
   const copyButton = event.target.closest("[data-copy]");
   const dailyCopy = event.target.closest("[data-copy-daily]");
   const filterButton = event.target.closest("[data-filter]");
@@ -1511,6 +1556,10 @@ contentEl.addEventListener("click", (event) => {
   }
   if (timelineToggle) {
     state.timelineExpanded = !state.timelineExpanded;
+    renderActiveView();
+  }
+  if (ideasToggle) {
+    state.ideasExpanded = !state.ideasExpanded;
     renderActiveView();
   }
   if (copyButton) {
