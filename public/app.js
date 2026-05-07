@@ -782,6 +782,38 @@ function renderCompactTodayRow(item) {
   `;
 }
 
+function topSourceChips(limit = 3) {
+  return buildSourceAnalytics()
+    .slice(0, limit)
+    .map((source) => ({
+      name: source.sourceName === "Mock Seed" ? "Mockデータ" : source.sourceName,
+      kind: source.sourceKind || sourceKindLabel(source),
+      count: source.itemCount,
+      status: source.displayStatus
+    }));
+}
+
+function renderTodayCompactCard(item) {
+  return `
+    <article class="today-compact-card priority-${escapeHtml(item.rank.toLowerCase())}">
+      <div class="today-compact-top">
+        <span class="rank-badge small">${escapeHtml(item.rank)}</span>
+        <span class="impact-pill tone-${escapeHtml(impactTone(item.impactLevel))}">注目度 ${escapeHtml(String(item.impactLevel))}/10</span>
+      </div>
+      <h4>${escapeHtml(capabilityTitle(item))}</h4>
+      <p>${escapeHtml(shortDescription(item))}</p>
+      <div class="today-compact-meta">
+        <span>${escapeHtml(sourceKindLabel(item))}</span>
+        <span>${escapeHtml(item.nextAction || item.pocIdeas?.[0] || "PoC対象を決める")}</span>
+      </div>
+      <div class="mini-actions">
+        <button class="secondary-button small-button" type="button" data-ui-action="poc" data-item-id="${escapeHtml(item.id)}">PoC案</button>
+        <button class="secondary-button small-button" type="button" data-ui-action="slack" data-item-id="${escapeHtml(item.id)}">共有</button>
+      </div>
+    </article>
+  `;
+}
+
 function progressCards() {
   const actions = actionSummaryCounts();
   return [
@@ -1107,23 +1139,59 @@ function renderToday() {
   const lead = topItems(1)[0];
   const capabilities = heroCapabilities();
   const compactItems = topItems(3);
+  const sources = topSourceChips(3);
+  const progress = progressCards();
+  const actionCounts = actionSummaryCounts();
 
   return `
-    <section class="hero-section">
-      <div class="hero-copy">
-        <p class="eyebrow">今日の要点</p>
-        <h3>今日のAI提案ネタ</h3>
-        <p class="hero-text">${escapeHtml(todayLeadMessage(lead))}</p>
-        <article class="hero-mini-card hero-mini-card-wide">
-          <span>できるようになったこと</span>
-          <ul>
-            ${capabilities.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
-          </ul>
-        </article>
-      </div>
+    <section class="today-overview-grid">
+      <section class="hero-section hero-section-compact">
+        <div class="hero-copy">
+          <p class="eyebrow">今日の要点</p>
+          <h3>今日のAI提案ネタ</h3>
+          <p class="hero-text">${escapeHtml(todayLeadMessage(lead))}</p>
+          <div class="hero-chip-list">
+            ${capabilities.map((line) => `<span class="status-tag">${escapeHtml(line)}</span>`).join("")}
+          </div>
+        </div>
+      </section>
+
+      <section class="brief-section brief-section-tight today-side-panel">
+        <div class="section-kicker">
+          <div>
+            <h3>情報元と操作</h3>
+            <span>どこから取得し、何ができるかを先に表示します</span>
+          </div>
+        </div>
+        <div class="today-source-chip-list">
+          ${sources
+            .map(
+              (source) => `
+                <article class="today-source-chip">
+                  <strong>${escapeHtml(source.name)}</strong>
+                  <span>${escapeHtml(`${source.kind} / ${source.count}件 / ${source.status}`)}</span>
+                </article>
+              `
+            )
+            .join("")}
+        </div>
+        <div class="today-inline-status">
+          ${progress
+            .map(
+              (status) => `
+                <span><strong>${escapeHtml(String(status.value))}</strong>${escapeHtml(status.label)}</span>
+              `
+            )
+            .join("")}
+        </div>
+        <div class="today-helper-note">
+          <p>AI収集を実行: 最新情報を再取得します</p>
+          <p>共有 / PoC案: いまは下書きコピーと状態記録です</p>
+        </div>
+      </section>
     </section>
 
-    <section class="summary-grid">
+    <section class="summary-grid summary-grid-main">
       ${renderSummaryCard("本日の新着件数", counts.newItems, "今日確認したAI情報")}
       ${renderSummaryCard("重要ネタ件数", counts.important, "S/Aランク中心")}
       ${renderSummaryCard("PoC/設計候補", counts.poc + counts.docs, "すぐに試せる候補")}
@@ -1132,38 +1200,21 @@ function renderToday() {
     <section class="brief-section">
       <div class="section-kicker">
         <div>
-          <h3>進捗状況</h3>
-          <span>今日どこまで進めたかだけを表示します</span>
-        </div>
-      </div>
-      <div class="timeline-status-row compact-progress">
-        ${progressCards()
-          .map(
-            (status) => `
-              <article class="timeline-status-card">
-                <span>${escapeHtml(status.label)}</span>
-                <strong>${escapeHtml(String(status.value))}</strong>
-                <p>${escapeHtml(status.note)}</p>
-              </article>
-            `
-          )
-          .join("")}
-      </div>
-    </section>
-
-    <section class="brief-section">
-      <div class="section-kicker">
-        <div>
           <h3>今日見る3件</h3>
-          <span>詳細は提案ネタで確認できます</span>
+          <span>提案・PoC・共有の起点になる3件だけを並べています</span>
         </div>
         <div class="today-actions">
           <button class="text-button" type="button" data-copy-daily="true">今日のブリーフをコピー</button>
           <button class="secondary-button small-button" type="button" data-view-link="ideas">提案ネタを開く</button>
         </div>
       </div>
-      <div class="today-row-list">
-        ${compactItems.map(renderCompactTodayRow).join("")}
+      <div class="today-compact-grid">
+        ${compactItems.map(renderTodayCompactCard).join("")}
+      </div>
+      <div class="today-footer-strip">
+        <span class="status-pill">提案化済み: <strong>${escapeHtml(String(actionCounts.proposalized))}</strong></span>
+        <span class="status-pill">共有済み: <strong>${escapeHtml(String(actionCounts.slackShared + actionCounts.notionSaved))}</strong></span>
+        <button class="secondary-button small-button" type="button" data-view-link="sources">収集状況を見る</button>
       </div>
     </section>
   `;
